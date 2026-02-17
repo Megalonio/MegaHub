@@ -9,20 +9,37 @@
 <body>
     <div id="loadingOverlay">
         <div class="loading-spinner"></div>
-        <div class="loading-text"></div>
-        <div class="loading-subtext"></div>
+        <div class="loading-text">INITIALIZING</div>
+        <div class="loading-subtext">Preparing video stream...</div>
     </div>
 
     <div class="container" id="uploadContainer">
         <div class="upload-zone" id="uploadZone">
-            <div class="upload-icon"></div>
-            <div class="upload-text">+</div>
-            <div class="upload-hint"></div>
+            <div class="upload-icon">
+                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M40 10L40 50M40 10L25 25M40 10L55 25" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M15 45V65C15 67.7614 17.2386 70 20 70H60C62.7614 70 65 67.7614 65 65V45" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div class="upload-text">Drop Video Here</div>
+            <div class="upload-hint">or click to browse • MP4, MOV, WebM</div>
             <input type="file" id="videoInput" accept="video/*" style="display: none;">
         </div>
     </div>
 
     <div id="videoSection">
+        <!-- Navigation Arrow Indicators -->
+        <div class="nav-arrow left" id="navArrowLeft">
+            <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 20L30 40L50 60" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <div class="nav-arrow right" id="navArrowRight">
+            <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M30 20L50 40L30 60" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        
         <div class="main-layout">
             <!-- TOP AREA (75%) -->
             <div class="video-area">
@@ -30,11 +47,17 @@
                     <video id="videoPlayer" controls muted></video>
                     <canvas id="animationPreview" style="display: none;"></canvas>
                     
-                    <div class="nav-hint" id="navHint">Arrows [←] [→] to Seek • [↑] or [Enter] to Capture</div>
+                    <div class="nav-hint" id="navHint">
+                        <span class="hint-key">←</span> <span class="hint-key">→</span> to Seek 
+                        <span class="hint-separator">•</span> 
+                        <span class="hint-key">↑</span> or <span class="hint-key">Enter</span> to Capture
+                        <span class="hint-separator">•</span>
+                        <span class="hint-key">↓</span> twice for Range
+                    </div>
                     <div class="nav-hint" id="previewHint" style="display: none;">
-                        <span style="color: var(--accent-pink); font-weight: bold;">PREVIEW MODE</span><br>
+                        <span style="color: var(--accent-pink); font-weight: bold;">◉ PREVIEW MODE</span><br>
                         <span id="fpsDisplay" style="color: var(--accent-cyan);">12 FPS</span><br>
-                        <span style="font-size: 0.6rem; opacity: 0.8;">Use [←] [→] to change speed</span>
+                        <span style="font-size: 0.6rem; opacity: 0.8;">Use <span class="hint-key">←</span> <span class="hint-key">→</span> to change speed</span>
                     </div>
                 </div>
             </div>
@@ -43,24 +66,37 @@
             <div class="sprite-builder-area">
                 <div class="sprite-header">
                     <div class="title-group">
-                        <h2 class="panel-title">Sprite Builder</h2>
-                        <span id="frameCounter" style="font-size: 0.8rem; color: var(--text-muted); margin-left: 10px;">0 frames</span>
+                        <h2 class="panel-title">
+                            <span class="title-icon">▶</span> Sprite Builder
+                        </h2>
+                        <span id="frameCounter" class="frame-badge">0 frames</span>
                     </div>
                     <div class="sprite-actions">
-                        <button id="resetSpriteBtn" class="btn-secondary">Reset</button>
-                        <button id="previewBtn" class="btn-secondary" disabled>Preview Animation</button>
-                        <button id="generateSpriteBtn" class="btn-primary" disabled>Generate PNG</button>
+                        <button id="resetSpriteBtn" class="btn-secondary" title="Clear all frames">
+                            <span class="btn-icon">↺</span> Reset
+                        </button>
+                        <button id="previewBtn" class="btn-secondary" disabled title="Preview animation loop">
+                            <span class="btn-icon">▶</span> Preview Animation
+                        </button>
+                        <button id="generateSpriteBtn" class="btn-primary" disabled title="Export sprite sheet as PNG">
+                            <span class="btn-icon">↓</span> Generate PNG
+                        </button>
                     </div>
                 </div>
                 
                 <div class="sprite-grid-container">
-                    <div class="sprite-grid" id="spriteGrid"></div>
+                    <div class="sprite-grid" id="spriteGrid">
+                        <div class="empty-state">
+                            <div class="empty-icon">◇</div>
+                            <div class="empty-text">No frames yet</div>
+                            <div class="empty-hint">Capture frames from the video above</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="loadingmessages.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
