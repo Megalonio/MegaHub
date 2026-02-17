@@ -15,6 +15,22 @@ const previewHint = document.getElementById('previewHint');
 const fpsDisplay = document.getElementById('fpsDisplay');
 const frameCounter = document.getElementById('frameCounter');
 
+// ─── Audio System ──────────────────────────────────────────────────────────
+const SFX = {
+    cursor:  new Audio('audio/menucursor.wav'),
+    select:  new Audio('audio/menuselect.wav'),
+    back:    new Audio('audio/menuback.wav'),
+    chord:   new Audio('audio/menuchord.wav'),
+};
+// Allow rapid re-triggering by cloning on each play
+function playSfx(name) {
+    const snd = SFX[name];
+    if (!snd) return;
+    const clone = snd.cloneNode();
+    clone.volume = snd.volume;
+    clone.play().catch(() => {});
+}
+
 // State
 let spriteSheetFrames = []; 
 let impactFrameIndex = -1; 
@@ -113,6 +129,7 @@ resetSpriteBtn.addEventListener('click', () => {
         // Confirmation feel
         if (!confirm('Clear all frames? This cannot be undone.')) return;
     }
+    playSfx('back');
     
     videoPlayer.src = "";
     spriteSheetFrames = [];
@@ -140,8 +157,8 @@ function getOrderedFrames() {
 
 // Preview Logic with enhanced transitions
 previewBtn.addEventListener('click', () => {
-    if (isPreviewing) stopPreview();
-    else startPreview();
+    if (isPreviewing) { playSfx('back'); stopPreview(); }
+    else { playSfx('select'); startPreview(); }
 });
 
 function startPreview() {
@@ -174,8 +191,14 @@ function runAnimationLoop() {
     animationPreview.width = videoPlayer.videoWidth;
     animationPreview.height = videoPlayer.videoHeight;
 
+    // In the ordered array, index 0 is always the impact frame (if set)
+    const impactIdxInLoop = (impactFrameIndex !== -1) ? 0 : -1;
+
     previewInterval = setInterval(() => {
         ctx.drawImage(ordered[currentIdx].canvas, 0, 0);
+        if (currentIdx === impactIdxInLoop) {
+            playSfx('select');
+        }
         currentIdx = (currentIdx + 1) % ordered.length;
     }, 1000 / currentPreviewFps);
 }
@@ -262,6 +285,7 @@ document.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowLeft') {
             e.preventDefault();
             currentPreviewFps = Math.max(1, currentPreviewFps - 1);
+            playSfx('cursor');
             updateFpsDisplay();
             runAnimationLoop();
             showNavArrow('left');
@@ -269,6 +293,7 @@ document.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight') {
             e.preventDefault();
             currentPreviewFps = Math.min(60, currentPreviewFps + 1);
+            playSfx('cursor');
             updateFpsDisplay();
             runAnimationLoop();
             showNavArrow('right');
@@ -280,11 +305,13 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowLeft') {
         e.preventDefault();
         videoPlayer.currentTime = Math.max(0, videoPlayer.currentTime - VIDEO_NAV_STEP);
+        playSfx('cursor');
         showNavArrow('left');
     }
     if (e.key === 'ArrowRight') {
         e.preventDefault();
         videoPlayer.currentTime = Math.min(videoPlayer.duration, videoPlayer.currentTime + VIDEO_NAV_STEP);
+        playSfx('cursor');
         showNavArrow('right');
     }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
@@ -296,12 +323,14 @@ document.addEventListener('keydown', (e) => {
                 // Start range capture
                 rangeStartTime = videoPlayer.currentTime;
                 rangeStartIndex = spriteSheetFrames.length;
+                playSfx('select');
                 captureCurrentFrame();
                 showRangeModeIndicator();
             } else {
                 // End range capture - capture all frames in between
                 const endTime = videoPlayer.currentTime;
                 const startTime = rangeStartTime;
+                playSfx('select');
                 
                 if (endTime > startTime) {
                     captureRangeFrames(startTime, endTime);
@@ -317,6 +346,7 @@ document.addEventListener('keydown', (e) => {
             }
         } else {
             // ArrowUp or Enter - single frame capture (old behavior)
+            playSfx('select');
             captureCurrentFrame();
         }
     }
@@ -487,8 +517,16 @@ function rebuildSpriteGrid() {
 
 function updateUI() {
     const hasFrames = spriteSheetFrames.length > 0;
+    const isSingle = spriteSheetFrames.length === 1;
     generateSpriteBtn.disabled = !hasFrames;
     previewBtn.disabled = !hasFrames;
+    
+    // Update generate button label
+    if (isSingle) {
+        generateSpriteBtn.innerHTML = '<span class="btn-icon">↓</span> Save Screenshot';
+    } else {
+        generateSpriteBtn.innerHTML = '<span class="btn-icon">↓</span> Generate PNG';
+    }
     
     // Update frame counter with animation
     const newCount = `${spriteSheetFrames.length} frame${spriteSheetFrames.length !== 1 ? 's' : ''}`;
@@ -521,39 +559,62 @@ function generateSpriteSheet() {
     // Show loading briefly
     const loadingText = document.querySelector('.loading-text');
     const loadingSubtext = document.querySelector('.loading-subtext');
-    loadingText.textContent = 'GENERATING';
-    loadingSubtext.textContent = 'Creating sprite sheet...';
     loadingOverlay.classList.add('active');
     
+    const ordered = getOrderedFrames();
+    const isSingle = ordered.length === 1;
+    
+    if (isSingle) {
+        loadingText.textContent = 'EXPORTING';
+        loadingSubtext.textContent = 'Saving screenshot...';
+    } else {
+        loadingText.textContent = 'GENERATING';
+        loadingSubtext.textContent = 'Creating sprite sheet...';
+    }
+    
     setTimeout(() => {
-        const ordered = getOrderedFrames();
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const fw = ordered[0].canvas.width;
         const fh = ordered[0].canvas.height;
         
-        let cols = Math.ceil(Math.sqrt(ordered.length * 1.5));
-        let rows = Math.ceil(ordered.length / cols);
-        canvas.width = fw * cols; 
-        canvas.height = fh * rows;
+        if (isSingle) {
+            // Pure single screenshot — no sheet
+            canvas.width = fw;
+            canvas.height = fh;
+            ctx.drawImage(ordered[0].canvas, 0, 0);
+        } else {
+            // Sprite sheet: max 5 per row, each new row after every 5 frames
+            const cols = Math.min(5, ordered.length);
+            const rows = Math.ceil(ordered.length / 5);
+            canvas.width = fw * cols;
+            canvas.height = fh * rows;
 
-        ordered.forEach((f, i) => {
-            ctx.drawImage(f.canvas, (i % cols) * fw, Math.floor(i / cols) * fh);
-        });
+            ordered.forEach((f, i) => {
+                const col = i % 5;
+                const row = Math.floor(i / 5);
+                ctx.drawImage(f.canvas, col * fw, row * fh);
+            });
+        }
 
         canvas.toBlob((blob) => {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.download = `spritesheet_${spriteSheetFrames.length}frames_${currentPreviewFps}fps.png`;
+            if (isSingle) {
+                link.download = `screenshot_frame.png`;
+            } else {
+                link.download = `spritesheet_${ordered.length}frames_${currentPreviewFps}fps.png`;
+            }
             link.href = url;
             link.click();
+            playSfx('chord');
             
             // Cleanup
             setTimeout(() => URL.revokeObjectURL(url), 100);
             
             // Success feedback
             loadingText.textContent = 'SUCCESS';
-            loadingSubtext.textContent = 'Sprite sheet downloaded!';
+            loadingSubtext.textContent = isSingle ? 'Screenshot downloaded!' : 'Sprite sheet downloaded!';
             
             setTimeout(() => {
                 loadingOverlay.classList.remove('active');
