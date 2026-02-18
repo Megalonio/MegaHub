@@ -1,0 +1,2655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokédle</title>
+    <link rel="stylesheet" href="hub.css">
+    <script src="hub-audio.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* ── CONFIG (swap these) ── */
+        :root {
+            --jsonbin-key: 'YOUR_JSONBIN_MASTER_KEY';
+            --jsonbin-bin: 'YOUR_JSONBIN_BIN_ID';
+        }
+
+        @keyframes blink  { 0%,100%{opacity:1} 50%{opacity:0} }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes popIn  { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
+        @keyframes shimmer{ 0%{background-position:200% center} 100%{background-position:-200% center} }
+        @keyframes flip   { 0%{transform:rotateY(0deg)} 50%{transform:rotateY(90deg)} 100%{transform:rotateY(0deg)} }
+        @keyframes tilePulse { 0%,100%{box-shadow:0 0 0 rgba(0,255,255,0)} 50%{box-shadow:0 0 20px rgba(0,255,255,0.15)} }
+        @keyframes shake  { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+        @keyframes revealGlow { from{box-shadow:0 0 0 rgba(0,255,255,0)} to{box-shadow:0 0 40px rgba(0,255,255,0.4)} }
+
+        /* ── NAV ── */
+        .cv-nav {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            height: 52px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-darker);
+            position: relative;
+            z-index: 100;
+        }
+
+        .cv-nav::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+            opacity: 0.4;
+        }
+
+        .nav-brand {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: color 0.2s;
+        }
+
+        .nav-brand:hover { color: var(--accent-cyan); }
+
+        .nav-brand-diamond {
+            width: 8px; height: 8px;
+            background: var(--accent-cyan);
+            transform: rotate(45deg);
+            box-shadow: 0 0 8px var(--accent-cyan);
+        }
+
+        .nav-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-user {
+            font-size: 0.58rem;
+            color: var(--accent-cyan);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .nav-btn {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.55rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 6px 14px;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+
+        /* ── SCREENS ── */
+        .screen {
+            display: none;
+            flex: 1;
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ══════════════════════════════════════
+           AUTH SCREEN
+        ══════════════════════════════════════ */
+        #authScreen {
+            align-items: center;
+            justify-content: center;
+            padding: 48px 24px;
+            animation: fadeUp 0.4s ease-out both;
+        }
+
+        .auth-box {
+            width: 100%;
+            max-width: 400px;
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .auth-box::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+            opacity: 0.7;
+        }
+
+        .auth-header {
+            padding: 28px 32px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .auth-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: var(--accent-cyan);
+            margin-bottom: 4px;
+        }
+
+        .auth-sub {
+            font-size: 0.58rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .auth-body {
+            padding: 24px 32px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .auth-field { display: flex; flex-direction: column; gap: 6px; }
+
+        .auth-label {
+            font-size: 0.55rem;
+            font-weight: 700;
+            color: var(--accent-pink);
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+        }
+
+        .auth-input {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 11px 14px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-light);
+            width: 100%;
+            transition: border-color 0.2s;
+            letter-spacing: 2px;
+        }
+
+        .auth-input:focus { outline: none; border-color: var(--accent-cyan); }
+        .auth-input::placeholder { color: var(--text-muted); opacity: 0.4; letter-spacing: 1px; }
+
+        /* PIN dots */
+        .pin-display {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            padding: 16px 0 4px;
+        }
+
+        .pin-dot {
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            transition: all 0.15s;
+        }
+
+        .pin-dot.filled {
+            background: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 8px rgba(0,255,255,0.4);
+        }
+
+        .pin-numpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .pin-key {
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            font-weight: 800;
+            padding: 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+        }
+
+        .pin-key:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(0,255,255,0.04); }
+        .pin-key:active { transform: scale(0.94); }
+        .pin-key.del { color: var(--text-muted); font-size: 0.8rem; }
+        .pin-key.zero { grid-column: 2; }
+
+        .auth-btn {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 13px;
+            border-radius: 8px;
+            border: 1px solid var(--accent-cyan);
+            background: rgba(0,255,255,0.06);
+            color: var(--accent-cyan);
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .auth-btn:hover { background: rgba(0,255,255,0.12); }
+        .auth-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+        .auth-switch {
+            font-size: 0.58rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-align: center;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .auth-switch:hover { color: var(--accent-cyan); }
+
+        .auth-error {
+            font-size: 0.6rem;
+            color: #ff4444;
+            letter-spacing: 1.5px;
+            text-align: center;
+            min-height: 1em;
+        }
+
+        /* ══════════════════════════════════════
+           TILE SCREEN
+        ══════════════════════════════════════ */
+        #tileScreen {
+            align-items: center;
+            justify-content: center;
+            padding: 32px 24px;
+            gap: 32px;
+            animation: fadeUp 0.4s ease-out both;
+        }
+
+        .tile-header {
+            text-align: center;
+        }
+
+        .tile-title {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(1.2rem, 3vw, 1.8rem);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            color: var(--accent-cyan);
+            margin-bottom: 6px;
+        }
+
+        .tile-sub {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .tile-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            max-width: 560px;
+            width: 100%;
+        }
+
+        .tile {
+            aspect-ratio: 3/4;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: linear-gradient(135deg, var(--surface) 0%, var(--bg-darker) 100%);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s;
+            animation: tilePulse 3s ease-in-out infinite;
+        }
+
+        .tile:nth-child(odd) { animation-delay: 0.5s; }
+        .tile:nth-child(3n) { animation-delay: 1s; }
+
+        /* Unique tile patterns */
+        .tile::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0.08;
+        }
+
+        .tile[data-pattern="0"]::before { background: radial-gradient(circle at 30% 30%, var(--accent-cyan), transparent 60%); }
+        .tile[data-pattern="1"]::before { background: radial-gradient(circle at 70% 70%, var(--accent-pink), transparent 60%); }
+        .tile[data-pattern="2"]::before { background: linear-gradient(135deg, var(--accent-cyan), transparent); }
+        .tile[data-pattern="3"]::before { background: linear-gradient(225deg, var(--accent-pink), transparent); }
+        .tile[data-pattern="4"]::before { background: radial-gradient(circle at 50% 50%, #00e87a, transparent 60%); }
+        .tile[data-pattern="5"]::before { background: conic-gradient(from 45deg, rgba(0,255,255,0.1), transparent, rgba(255,0,255,0.1)); }
+        .tile[data-pattern="6"]::before { background: radial-gradient(ellipse at 20% 80%, var(--accent-cyan), transparent 50%); }
+        .tile[data-pattern="7"]::before { background: radial-gradient(ellipse at 80% 20%, var(--accent-pink), transparent 50%); }
+        .tile[data-pattern="8"]::before { background: linear-gradient(90deg, rgba(0,255,255,0.1), rgba(255,0,255,0.1)); }
+        .tile[data-pattern="9"]::before { background: radial-gradient(circle at 50% 0%, var(--accent-cyan), transparent 70%); }
+
+        .tile-num {
+            position: absolute;
+            top: 8px;
+            left: 10px;
+            font-family: 'Syne', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: var(--accent-cyan);
+            opacity: 0.7;
+            letter-spacing: 1px;
+            z-index: 2;
+        }
+
+        .tile-silhouette {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 12px;
+            filter: brightness(0) opacity(0.35);
+        }
+
+        .tile.picked {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 2px var(--accent-cyan), 0 0 20px rgba(0,255,255,0.2);
+        }
+
+        .tile.claimed {
+            border-color: rgba(255,95,215,0.4);
+            cursor: not-allowed;
+            opacity: 0.85;
+        }
+
+        .tile.claimed:hover {
+            transform: none;
+            box-shadow: none;
+            border-color: rgba(255,95,215,0.4);
+        }
+
+        .tile-claimer {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            padding: 5px 6px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.85));
+            font-size: 0.48rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-pink);
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            z-index: 3;
+        }
+
+        .tile-pokeball {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.8rem;
+            opacity: 0.08;
+        }
+
+        .tile:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 16px rgba(0,255,255,0.1);
+        }
+
+        .tile.selected {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 2px var(--accent-cyan), 0 0 20px rgba(0,255,255,0.3);
+            animation: none;
+        }
+
+        .tile.keyboard-focus {
+            border-color: var(--accent-pink);
+            box-shadow: 0 0 0 2px var(--accent-pink);
+            animation: none;
+        }
+
+        .tile-hint {
+            font-size: 0.58rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            text-align: center;
+            opacity: 0.5;
+        }
+
+        .tile-confirm-btn {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 12px 32px;
+            border-radius: 8px;
+            border: 1px solid var(--accent-cyan);
+            background: rgba(0,255,255,0.06);
+            color: var(--accent-cyan);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: none;
+        }
+
+        .tile-confirm-btn.visible { display: block; }
+        .tile-confirm-btn:hover { background: rgba(0,255,255,0.14); }
+
+        /* ══════════════════════════════════════
+           GAME SCREEN
+        ══════════════════════════════════════ */
+        #gameScreen {
+            flex-direction: row;
+            min-height: 0;
+        }
+
+        /* left panel */
+        .game-left {
+            width: 300px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-darker);
+            overflow: hidden;
+        }
+
+        .pokemon-silhouette-wrap {
+            flex: 0 0 290px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid var(--border);
+            background: radial-gradient(ellipse at center, rgba(0,255,255,0.04) 0%, transparent 70%);
+        }
+
+        .pokemon-silhouette {
+            width: 260px;
+            height: 260px;
+            object-fit: contain;
+            filter: brightness(0);
+            transition: filter 1.2s ease;
+        }
+
+        .pokemon-silhouette.revealed { filter: brightness(1); }
+
+        .hint-panels {
+            flex: 1;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+        }
+
+        .hint-panel {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .hint-panel-header {
+            padding: 8px 12px;
+            background: var(--surface);
+            font-size: 0.55rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .hint-panel-body {
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .hint-input-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .hint-input {
+            flex: 1;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 7px 10px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-light);
+            transition: border-color 0.2s;
+        }
+
+        .hint-input:focus { outline: none; border-color: var(--accent-cyan); }
+        .hint-input::placeholder { color: var(--text-muted); opacity: 0.4; font-size: 0.62rem; }
+        .hint-input:disabled { opacity: 0.3; }
+
+        .hint-btn {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.55rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 7px 12px;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .hint-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+        .hint-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+        /* type icons grid */
+        .type-icons-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .type-icon-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 0.52rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: capitalize;
+        }
+
+        .type-icon-btn img {
+            width: 14px;
+            height: 14px;
+            object-fit: contain;
+        }
+
+        .type-icon-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+        .type-icon-btn.used { opacity: 0.25; pointer-events: none; }
+        .type-icon-btn.correct { border-color: #6aaa64; color: #6aaa64; }
+        .type-icon-btn.wrong { opacity: 0.2; pointer-events: none; }
+
+        .gen-numpad {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+        }
+
+        .gen-key {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 800;
+            padding: 8px 4px;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+        }
+
+        .gen-key:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+        .gen-key:active { transform: scale(0.92); }
+        .gen-key.used-wrong { opacity: 0.2; pointer-events: none; }
+        .gen-key.used-correct { border-color: #6aaa64; background: rgba(106,170,100,0.1); color: #6aaa64; pointer-events: none; }
+
+        .hint-result {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            letter-spacing: 1.5px;
+            min-height: 1em;
+        }
+
+        .hint-result.success { color: #6aaa64; }
+        .hint-result.fail    { color: #ff4444; }
+
+        /* ── CENTER (game area) ── */
+        .game-center {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 24px;
+            gap: 12px;
+            overflow-y: auto;
+            justify-content: space-between;
+        }
+
+        .game-center-top {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+        }
+
+        /* word display */
+        .word-display {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .letter-cell {
+            width: 46px;
+            height: 52px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Syne', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--text-light);
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+
+        .letter-cell.sep {
+            width: 12px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+        }
+
+        .letter-cell.revealed-hint {
+            border-color: #c9b458;
+            background: rgba(201,180,88,0.08);
+            color: #c9b458;
+        }
+
+        /* guess rows */
+        .guess-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .guess-row {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .guess-cell {
+            width: 44px;
+            height: 48px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Syne', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: white;
+            transition: transform 0.15s;
+        }
+
+        .guess-cell.correct { background: #6aaa64; }
+        .guess-cell.present { background: #c9b458; }
+        .guess-cell.absent  { background: #3a3a3c; }
+        .guess-cell.sep     { background: transparent; color: var(--text-muted); font-size: 1rem; width: 14px; }
+
+        /* current input row */
+        .current-input-row {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .current-cell {
+            width: 44px;
+            height: 48px;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Syne', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--text-light);
+            transition: all 0.1s;
+        }
+
+        .current-cell.active { border-color: var(--accent-cyan); }
+        .current-cell.sep    { background: transparent; border: none; color: var(--text-muted); font-size: 1rem; width: 14px; }
+
+        /* attempts counter */
+        .attempts-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .attempt-pip {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--border);
+            transition: all 0.2s;
+        }
+
+        .attempt-pip.used  { background: #c9b458; }
+        .attempt-pip.wrong { background: #ff4444; }
+        .attempt-pip.avail { background: var(--border); }
+
+        /* ── KEYBOARD ── */
+        .keyboard {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            max-width: 760px;
+        }
+
+        .kb-row {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .kb-key {
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            font-weight: 800;
+            padding: 18px 12px;
+            min-width: 50px;
+            border-radius: 7px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+            text-transform: uppercase;
+            user-select: none;
+            flex: 1;
+            max-width: 64px;
+        }
+
+        .kb-key:hover  { border-color: var(--accent-cyan); }
+        .kb-key.wide   { min-width: 84px; max-width: 96px; font-size: 0.7rem; flex: 1.8; }
+        .kb-key.correct     { background: #6aaa64; border-color: #6aaa64; color: white; }
+        .kb-key.present     { background: #c9b458; border-color: #c9b458; color: white; }
+        .kb-key.absent      { background: #3a3a3c; border-color: #3a3a3c; color: #666; }
+        .kb-key.hint-green  { background: rgba(106,170,100,0.18); border-color: #6aaa64; color: #6aaa64; box-shadow: 0 0 8px rgba(106,170,100,0.3); }
+        .kb-key.hint-yellow { background: rgba(201,180,88,0.18); border-color: #c9b458; color: #c9b458; box-shadow: 0 0 8px rgba(201,180,88,0.3); }
+
+        /* ── RIGHT PANEL: leaderboard ── */
+        .game-right {
+            width: 220px;
+            flex-shrink: 0;
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-darker);
+        }
+
+        .panel-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.55rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .leaderboard-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+
+        .lb-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            transition: background 0.15s;
+        }
+
+        .lb-row:hover { background: rgba(255,255,255,0.03); }
+        .lb-row.me { background: rgba(0,255,255,0.04); }
+
+        .lb-rank {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .lb-rank.gold   { color: #ffd700; }
+        .lb-rank.silver { color: #c0c0c0; }
+        .lb-rank.bronze { color: #cd7f32; }
+
+        .lb-name {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-light);
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .lb-count {
+            font-size: 0.62rem;
+            color: var(--accent-cyan);
+            letter-spacing: 1px;
+            flex-shrink: 0;
+        }
+
+        /* ── SUCCESS / FAIL OVERLAY ── */
+        .result-overlay {
+            position: fixed; inset: 0;
+            background: rgba(5,8,20,0.92);
+            z-index: 300;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            backdrop-filter: blur(8px);
+        }
+
+        .result-overlay.visible { opacity: 1; pointer-events: all; }
+
+        .result-box {
+            width: 100%;
+            max-width: 460px;
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            animation: popIn 0.3s ease-out both;
+            position: relative;
+        }
+
+        .result-box::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 2px;
+        }
+
+        .result-box.success::before { background: linear-gradient(90deg, transparent, #6aaa64, transparent); }
+        .result-box.fail::before    { background: linear-gradient(90deg, transparent, #ff4444, transparent); }
+
+        .result-pokemon-img {
+            width: 180px;
+            height: 180px;
+            object-fit: contain;
+            display: block;
+            margin: 28px auto 0;
+        }
+
+        .result-body {
+            padding: 16px 32px 28px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .result-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+        }
+
+        .result-title.success { color: #6aaa64; }
+        .result-title.fail    { color: #ff4444; }
+
+        .result-pokemon-name {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--text-light);
+        }
+
+        .result-types {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .result-type-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            font-size: 0.6rem;
+            letter-spacing: 2px;
+            text-transform: capitalize;
+            color: var(--text-muted);
+        }
+
+        .result-type-badge img { width: 16px; height: 16px; }
+
+        .result-countdown {
+            font-size: 0.58rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+        }
+
+        .result-countdown span { color: var(--accent-cyan); }
+
+        .result-btn {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.62rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 11px 28px;
+            border-radius: 8px;
+            border: 1px solid var(--accent-cyan);
+            background: rgba(0,255,255,0.06);
+            color: var(--accent-cyan);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .result-btn:hover { background: rgba(0,255,255,0.14); }
+
+        /* ── POKÉDEX SCREEN ── */
+        #pokedexScreen {
+            padding: 24px 40px;
+            gap: 24px;
+            overflow-y: auto;
+        }
+
+        .pokedex-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .pokedex-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            color: var(--accent-cyan);
+        }
+
+        .pokedex-count {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+        }
+
+        .pokedex-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+        }
+
+        .pokedex-card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-darker);
+            cursor: pointer;
+            transition: all 0.2s;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 8px 8px;
+            gap: 6px;
+            animation: fadeUp 0.3s ease-out both;
+        }
+
+        .pokedex-card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+
+        .pokedex-card img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+        }
+
+        .pokedex-card-name {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.6rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-light);
+            text-align: center;
+        }
+
+        .pokedex-card-num {
+            font-size: 0.52rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+
+        .pokedex-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px;
+            gap: 12px;
+            opacity: 0.3;
+        }
+
+        .pokedex-empty-icon { font-size: 2.5rem; color: var(--accent-cyan); }
+        .pokedex-empty-text { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; color: var(--text-muted); }
+
+        /* Pokédex detail modal */
+        .dex-modal-backdrop {
+            position: fixed; inset: 0;
+            background: rgba(5,8,20,0.92);
+            z-index: 300;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            backdrop-filter: blur(8px);
+        }
+
+        .dex-modal-backdrop.visible { opacity: 1; pointer-events: all; }
+
+        .dex-modal {
+            width: 100%;
+            max-width: 600px;
+            max-height: 85vh;
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow-y: auto;
+            animation: popIn 0.25s ease-out both;
+            position: relative;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+
+        .dex-modal-top {
+            display: flex;
+            gap: 24px;
+            padding: 28px;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+        }
+
+        .dex-modal-close {
+            position: absolute;
+            top: 16px; right: 16px;
+            width: 28px; height: 28px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .dex-modal-close:hover { border-color: #ff4444; color: #ff4444; }
+
+        .dex-modal-img {
+            width: 140px;
+            height: 140px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .dex-modal-info { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+
+        .dex-modal-num {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            letter-spacing: 3px;
+        }
+
+        .dex-modal-name {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--text-light);
+        }
+
+        .dex-modal-types { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .dex-type-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 3px;
+            border: 1px solid var(--border);
+            font-size: 0.55rem;
+            letter-spacing: 1.5px;
+            text-transform: capitalize;
+            color: var(--text-muted);
+        }
+
+        .dex-type-badge img { width: 13px; height: 13px; }
+
+        .dex-flavor {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            font-style: italic;
+        }
+
+        .dex-modal-body {
+            padding: 20px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .dex-section-title {
+            font-size: 0.55rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .dex-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .dex-stat-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dex-stat-name {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            width: 80px;
+            flex-shrink: 0;
+        }
+
+        .dex-stat-val {
+            font-size: 0.65rem;
+            color: var(--text-light);
+            width: 28px;
+            flex-shrink: 0;
+            text-align: right;
+        }
+
+        .dex-stat-bar {
+            flex: 1;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .dex-stat-fill {
+            height: 100%;
+            border-radius: 2px;
+            background: var(--accent-cyan);
+            transition: width 0.6s ease-out;
+        }
+
+        .dex-abilities {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .dex-ability-tag {
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            font-size: 0.58rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: capitalize;
+        }
+
+        /* ── COMPLETED STATE ── */
+        .completed-banner {
+            padding: 12px 24px;
+            background: rgba(106,170,100,0.08);
+            border-bottom: 1px solid rgba(106,170,100,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.6rem;
+            color: #6aaa64;
+            letter-spacing: 2px;
+        }
+
+        .completed-banner .next-time {
+            color: var(--text-muted);
+        }
+
+        /* ── LOADING ── */
+        .loading-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+            animation: blink 1s ease-in-out infinite;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAV -->
+    <nav class="cv-nav">
+        <a class="nav-brand" href="index.html">
+            <span class="nav-brand-diamond"></span>
+            MegaHub
+        </a>
+        <div class="nav-title" id="navTitle">✦ Pokédle</div>
+        <div class="nav-right">
+            <span class="nav-user" id="navUser" style="display:none;"></span>
+            <button class="nav-btn" id="pokedexBtn" style="display:none;" onclick="togglePokedex()">Pokédex</button>
+            <button class="nav-btn" id="playBtn" style="display:none;" onclick="showScreen('tileScreen')">Play</button>
+            <button class="nav-btn" id="logoutBtn" style="display:none;" onclick="logout()">Log Out</button>
+        </div>
+    </nav>
+
+    <!-- RESULT OVERLAY -->
+    <div class="result-overlay" id="resultOverlay">
+        <div class="result-box" id="resultBox">
+            <img class="result-pokemon-img" id="resultImg" src="" alt="">
+            <div class="result-body">
+                <div class="result-title" id="resultTitle"></div>
+                <div class="result-pokemon-name" id="resultPokeName"></div>
+                <div class="result-types" id="resultTypes"></div>
+                <div class="result-countdown" id="resultCountdown"></div>
+                <button class="result-btn" onclick="closeResult()">View Pokédex</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- POKÉDEX DETAIL MODAL -->
+    <div class="dex-modal-backdrop" id="dexModalBackdrop">
+        <div class="dex-modal" id="dexModal">
+            <div class="dex-modal-top">
+                <button class="dex-modal-close" onclick="closeDexModal()">✕</button>
+                <img class="dex-modal-img" id="dexModalImg" src="" alt="">
+                <div class="dex-modal-info">
+                    <div class="dex-modal-num" id="dexModalNum"></div>
+                    <div class="dex-modal-name" id="dexModalName"></div>
+                    <div class="dex-modal-types" id="dexModalTypes"></div>
+                    <div class="dex-flavor" id="dexModalFlavor"></div>
+                </div>
+            </div>
+            <div class="dex-modal-body">
+                <div>
+                    <div class="dex-section-title">Base Stats</div>
+                    <div class="dex-stats" id="dexModalStats"></div>
+                </div>
+                <div>
+                    <div class="dex-section-title">Abilities</div>
+                    <div class="dex-abilities" id="dexModalAbilities"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUTH SCREEN -->
+    <div class="screen active" id="authScreen">
+        <div class="auth-box">
+            <div class="auth-header">
+                <div class="auth-title">Pokédle</div>
+                <div class="auth-sub" id="authSub">Sign in or create account</div>
+            </div>
+            <div class="auth-body">
+                <div class="auth-field" id="usernameField">
+                    <div class="auth-label">Username</div>
+                    <input class="auth-input" id="usernameInput" placeholder="your name" autocomplete="off" spellcheck="false">
+                </div>
+                <div id="pinSection" style="display:none;">
+                    <div class="auth-label" style="margin-bottom:10px;">4-Digit PIN</div>
+                    <div class="pin-display" id="pinDisplay">
+                        <div class="pin-dot"></div>
+                        <div class="pin-dot"></div>
+                        <div class="pin-dot"></div>
+                        <div class="pin-dot"></div>
+                    </div>
+                    <div class="pin-numpad" id="pinNumpad"></div>
+                </div>
+                <div class="auth-error" id="authError"></div>
+                <button class="auth-btn" id="authNextBtn">Continue</button>
+                <div class="auth-switch" id="authSwitch"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TILE SCREEN -->
+    <div class="screen" id="tileScreen">
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px; padding:28px 24px;">
+            <div class="tile-header">
+                <div class="tile-title">Today's Pokédle</div>
+                <div class="tile-sub" id="tileDateSub"></div>
+            </div>
+            <div class="tile-grid" id="tileGrid"></div>
+            <div class="tile-hint" id="tileHint">Arrow keys to navigate · Enter or click to select</div>
+            <button class="tile-confirm-btn" id="tileConfirmBtn">Choose This Tile →</button>
+        </div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div class="screen" id="gameScreen">
+
+        <!-- Left: silhouette + hints -->
+        <div class="game-left">
+            <div class="pokemon-silhouette-wrap">
+                <img class="pokemon-silhouette" id="pokemonSilhouette" src="" alt="???">
+            </div>
+            <div class="hint-panels">
+
+                <!-- TYPE hint -->
+                <div class="hint-panel">
+                    <div class="hint-panel-header">
+                        <span>Type</span>
+                        <span style="font-size:0.5rem; color:var(--accent-pink);">→ Yellow letter</span>
+                    </div>
+                    <div class="hint-panel-body">
+                        <div class="type-icons-grid" id="typeIconsGrid"></div>
+                        <div class="hint-result" id="typeResult"></div>
+                    </div>
+                </div>
+
+                <!-- GEN hint -->
+                <div class="hint-panel">
+                    <div class="hint-panel-header">
+                        <span>Generation</span>
+                        <span style="font-size:0.5rem; color:var(--accent-pink);">→ Yellow or Green</span>
+                    </div>
+                    <div class="hint-panel-body">
+                        <div class="gen-numpad" id="genNumpad"></div>
+                        <div class="hint-result" id="genResult"></div>
+                    </div>
+                </div>
+
+                <!-- ABILITY hint -->
+                <div class="hint-panel">
+                    <div class="hint-panel-header">
+                        <span>Ability</span>
+                        <span style="font-size:0.5rem; color:var(--accent-pink);">→ Green letter</span>
+                    </div>
+                    <div class="hint-panel-body">
+                        <div class="hint-input-row">
+                            <input class="hint-input" id="abilityInput" placeholder="e.g. intimidate">
+                            <button class="hint-btn" id="abilityBtn">Guess</button>
+                        </div>
+                        <div class="hint-result" id="abilityResult"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center: word + keyboard -->
+        <div class="game-center">
+            <div class="game-center-top">
+                <div class="attempts-bar" id="attemptsBar"></div>
+                <div class="word-display" id="wordDisplay"></div>
+                <div class="guess-rows" id="guessRows"></div>
+                <div class="current-input-row" id="currentInputRow"></div>
+            </div>
+            <div class="keyboard" id="keyboard"></div>
+        </div>
+
+        <!-- Right: leaderboard -->
+        <div class="game-right">
+            <div class="panel-header">
+                <span>Leaderboard</span>
+                <span class="loading-dot" id="lbLoading"></span>
+            </div>
+            <div class="leaderboard-list" id="leaderboardList"></div>
+        </div>
+
+    </div>
+
+    <!-- POKÉDEX SCREEN -->
+    <div class="screen" id="pokedexScreen">
+        <div class="pokedex-header">
+            <div class="pokedex-title">Pokédex</div>
+            <div class="pokedex-count" id="pokedexCount"></div>
+        </div>
+        <div id="pokedexContent"></div>
+    </div>
+
+    <script>
+    // ════════════════════════════════════════════════════════
+    //  CONFIG — swap these two values when you have your key
+    // ════════════════════════════════════════════════════════
+    const JSONBIN_KEY = '$2a$10$4zgXclml/nzvi4C7EUPZQuXr/fHK13krwhiZSXcgon5zatSt8YXT.'; // e.g. '$2a$10$...'
+    const JSONBIN_BIN = '69961e73ae596e708f354016';     // e.g. '65f3c...'
+    const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN}`;
+
+    const MAX_GUESSES = 6;
+    const TILE_COUNT  = 20;
+    const ALL_TYPES   = ['Normal','Fire','Water','Electric','Grass','Ice','Fighting','Poison',
+                         'Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon','Dark',
+                         'Steel','Fairy'];
+
+    // ════════════════════════════════════════════════════════
+    //  STATE
+    // ════════════════════════════════════════════════════════
+    let currentUser   = null;  // { username, pin, caught: [] }
+    let allPokemon    = [];    // from PokéAPI list
+    let dailyPool     = [];    // 20 Pokémon objects for today
+    let chosenPokemon = null;  // the one the user picked
+    let guesses       = [];
+    let revealedIdxs  = [];
+    let currentInput  = [];
+    let gameOver      = false;
+    let kbState       = {};    // letter -> 'correct'|'present'|'absent'
+    let usedTypeHints = new Set();
+    let usedGenHint   = false;
+    let usedAbilityHint = false;
+    let selectedTileIdx = -1;
+    let dbData        = { users: {} };
+
+    // ════════════════════════════════════════════════════════
+    //  UTILS
+    // ════════════════════════════════════════════════════════
+    function today() { return new Date().toISOString().slice(0, 10); }
+
+    function hashStr(s) {
+        let h = 0;
+        for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+        return h;
+    }
+
+    function seededRand(seed) {
+        let s = seed;
+        return () => {
+            s = (s * 1664525 + 1013904223) & 0xffffffff;
+            return (s >>> 0) / 0xffffffff;
+        };
+    }
+
+    function normalizeName(name) {
+        return (name || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    }
+
+    function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+    function romanToNum(r) {
+        const m = {i:1,ii:2,iii:3,iv:4,v:5,vi:6,vii:7,viii:8,ix:9};
+        return m[r.toLowerCase()] || null;
+    }
+
+    function genToNumber(genName) {
+        if (!genName) return null;
+        const m = genName.match(/generation-(.+)/);
+        if (!m) return null;
+        const n = romanToNum(m[1]);
+        return n ? String(n) : m[1];
+    }
+
+    function nextMidnight() {
+        const now = new Date();
+        const midnight = new Date(now);
+        midnight.setHours(24, 0, 0, 0);
+        const diff = midnight - now;
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  SCREEN MANAGEMENT
+    // ════════════════════════════════════════════════════════
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if (id === 'pokedexScreen') renderPokedex();
+    }
+
+    function togglePokedex() {
+        const pokedexActive = document.getElementById('pokedexScreen').classList.contains('active');
+        if (pokedexActive) {
+            // go back to wherever makes sense
+            if (gameOver || !chosenPokemon) {
+                showScreen('tileScreen');
+            } else {
+                showScreen('gameScreen');
+            }
+            document.getElementById('pokedexBtn').textContent = 'Pokédex';
+        } else {
+            showScreen('pokedexScreen');
+            document.getElementById('pokedexBtn').textContent = '← Back';
+        }
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  JSONBIN DB
+    // ════════════════════════════════════════════════════════
+    async function dbRead() {
+        if (!JSONBIN_KEY || JSONBIN_KEY.startsWith('YOUR_')) {
+            // offline mode — use localStorage fallback
+            const raw = localStorage.getItem('pokédle_db');
+            dbData = raw ? JSON.parse(raw) : { users: {} };
+            return dbData;
+        }
+        try {
+            const r = await fetch(JSONBIN_URL + '/latest', {
+                headers: { 'X-Master-Key': JSONBIN_KEY }
+            });
+            const j = await r.json();
+            dbData = j.record || { users: {} };
+            return dbData;
+        } catch (e) {
+            console.warn('DB read failed, using local', e);
+            const raw = localStorage.getItem('pokédle_db');
+            dbData = raw ? JSON.parse(raw) : { users: {} };
+            return dbData;
+        }
+    }
+
+    async function dbWrite() {
+        localStorage.setItem('pokédle_db', JSON.stringify(dbData));
+        if (!JSONBIN_KEY || JSONBIN_KEY.startsWith('YOUR_')) return;
+        try {
+            await fetch(JSONBIN_URL, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': JSONBIN_KEY
+                },
+                body: JSON.stringify(dbData)
+            });
+        } catch (e) { console.warn('DB write failed', e); }
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  AUTH
+    // ════════════════════════════════════════════════════════
+    let authMode = 'username'; // 'username' | 'pin-new' | 'pin-existing'
+    let authUsername = '';
+    let pinBuffer = '';
+
+    function buildPinNumpad() {
+        const pad = document.getElementById('pinNumpad');
+        pad.innerHTML = '';
+        const keys = [1,2,3,4,5,6,7,8,9,'⌫',0];
+        keys.forEach(k => {
+            const btn = document.createElement('button');
+            btn.className = 'pin-key' + (k === '⌫' ? ' del' : '') + (k === 0 ? ' zero' : '');
+            btn.textContent = k;
+            btn.addEventListener('click', () => {
+                if (k === '⌫') {
+                    if (pinBuffer.length > 0) pinBuffer = pinBuffer.slice(0, -1);
+                } else {
+                    if (pinBuffer.length < 4) pinBuffer += String(k);
+                }
+                updatePinDisplay();
+                if (pinBuffer.length === 4) setTimeout(submitPin, 300);
+            });
+            pad.appendChild(btn);
+        });
+    }
+
+    function updatePinDisplay() {
+        const dots = document.querySelectorAll('#pinDisplay .pin-dot');
+        dots.forEach((d, i) => d.classList.toggle('filled', i < pinBuffer.length));
+    }
+
+    async function submitPin() {
+        const pin = pinBuffer;
+        pinBuffer = '';
+        updatePinDisplay();
+        const db = await dbRead();
+        const userRecord = db.users[authUsername.toLowerCase()];
+
+        if (authMode === 'pin-new') {
+            if (userRecord) {
+                setAuthError('Username taken. Try another.');
+                goBackToUsername();
+                return;
+            }
+            db.users[authUsername.toLowerCase()] = { pin, caught: [], display: authUsername };
+            dbData = db;
+            await dbWrite();
+            loginAs(authUsername);
+        } else if (authMode === 'pin-existing') {
+            if (!userRecord || userRecord.pin !== pin) {
+                setAuthError('Wrong PIN.');
+                pinBuffer = '';
+                updatePinDisplay();
+                return;
+            }
+            loginAs(authUsername);
+        }
+    }
+
+    function loginAs(username) {
+        const key = username.toLowerCase();
+        currentUser = { username: key, display: dbData.users[key].display || username };
+        localStorage.setItem('pokédle_session', JSON.stringify({ username: key, day: today() }));
+        document.getElementById('navUser').textContent = currentUser.display;
+        document.getElementById('navUser').style.display = 'block';
+        document.getElementById('pokedexBtn').style.display = 'block';
+        document.getElementById('logoutBtn').style.display = 'block';
+
+        // Check if already played today
+        const dayData = dbData.users[key];
+        const todayKey = 'played_' + today();
+        if (dayData && dayData[todayKey]) {
+            // already done today
+            showScreen('tileScreen');
+            buildTileGrid(true);
+            document.getElementById('playBtn').style.display = 'none';
+        } else {
+            showScreen('tileScreen');
+            buildTileGrid(false);
+            document.getElementById('playBtn').style.display = 'none';
+        }
+    }
+
+    function logout() {
+        currentUser = null;
+        localStorage.removeItem('pokédle_session');
+        document.getElementById('navUser').style.display = 'none';
+        document.getElementById('pokedexBtn').style.display = 'none';
+        document.getElementById('playBtn').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'none';
+        showScreen('authScreen');
+        goBackToUsername();
+    }
+
+    function setAuthError(msg) {
+        document.getElementById('authError').textContent = msg;
+    }
+
+    function goBackToUsername() {
+        authMode = 'username';
+        document.getElementById('pinSection').style.display = 'none';
+        document.getElementById('usernameField').style.display = 'flex';
+        document.getElementById('usernameInput').value = '';
+        document.getElementById('authNextBtn').style.display = 'block';
+        document.getElementById('authSwitch').textContent = '';
+        pinBuffer = '';
+        updatePinDisplay();
+    }
+
+    // Auth flow
+    document.getElementById('authNextBtn').addEventListener('click', async () => {
+        const username = document.getElementById('usernameInput').value.trim();
+        if (!username || username.length < 2) { setAuthError('Name must be at least 2 characters.'); return; }
+        setAuthError('');
+        authUsername = username;
+        const db = await dbRead();
+        const exists = !!db.users[username.toLowerCase()];
+
+        // Show PIN entry
+        document.getElementById('usernameField').style.display = 'none';
+        document.getElementById('authNextBtn').style.display = 'none';
+        document.getElementById('pinSection').style.display = 'block';
+        document.getElementById('authSub').textContent = exists ? 'Enter your PIN' : 'Create a 4-digit PIN';
+        document.getElementById('authSwitch').textContent = '← Back';
+        authMode = exists ? 'pin-existing' : 'pin-new';
+        buildPinNumpad();
+    });
+
+    document.getElementById('authSwitch').addEventListener('click', () => {
+        if (document.getElementById('authSwitch').textContent === '← Back') goBackToUsername();
+    });
+
+    // Check session on load
+    async function checkSession() {
+        const raw = localStorage.getItem('pokédle_session');
+        if (!raw) return false;
+        try {
+            const sess = JSON.parse(raw);
+            if (sess.day !== today()) return false; // new day, re-auth
+            const db = await dbRead();
+            if (!db.users[sess.username]) return false;
+            loginAs(sess.username);
+            return true;
+        } catch { return false; }
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  POKÉAPI
+    // ════════════════════════════════════════════════════════
+    async function loadAllPokemon() {
+        const cached = sessionStorage.getItem('pokémon_list');
+        if (cached) { allPokemon = JSON.parse(cached); return; }
+        const r = await fetch('https://pokeapi.co/api/v2/pokemon?limit=2000');
+        const d = await r.json();
+        allPokemon = d.results.map((p, i) => ({ id: i+1, name: p.name, url: p.url }));
+        sessionStorage.setItem('pokémon_list', JSON.stringify(allPokemon));
+    }
+
+    async function fetchPokemonDetail(urlOrName) {
+        const url = urlOrName.startsWith('http') ? urlOrName : `https://pokeapi.co/api/v2/pokemon/${urlOrName}`;
+        const r = await fetch(url);
+        const d = await r.json();
+        const sr = await fetch(d.species.url);
+        const sd = sr.ok ? await sr.json() : {};
+        const flavorEntry = (sd.flavor_text_entries || []).find(e => e.language.name === 'en');
+
+        return {
+            id: d.id,
+            name: capitalize(d.name),
+            rawName: d.name,
+            image: d.sprites?.other?.['official-artwork']?.front_default || d.sprites?.front_default || null,
+            types: (d.types || []).map(t => capitalize(t.type.name)),
+            abilities: (d.abilities || []).map(a => a.ability.name),
+            generation_raw: sd.generation?.name || null,
+            stats: (d.stats || []).map(s => ({ name: s.stat.name, value: s.base_stat })),
+            flavor: flavorEntry ? flavorEntry.flavor_text.replace(/\f/g, ' ') : '',
+            is_legendary: sd.is_legendary || false,
+            is_mythical: sd.is_mythical || false,
+        };
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  DAILY POOL — 20 tiles, same for everyone each day
+    // ════════════════════════════════════════════════════════
+    async function buildDailyPool() {
+        await loadAllPokemon();
+        const rand = seededRand(hashStr(today()));
+        const indices = new Set();
+        while (indices.size < TILE_COUNT) {
+            indices.add(Math.floor(rand() * allPokemon.length));
+        }
+        const picks = [...indices].map(i => allPokemon[i]);
+
+        // Fetch details for all 20 in parallel
+        dailyPool = await Promise.all(picks.map(p => fetchPokemonDetail(p.url)));
+        return dailyPool;
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  TILE SCREEN
+    // ════════════════════════════════════════════════════════
+    // Returns shared claimed tiles map for today: { tileIdx: { username, displayName, pokemonName } }
+    function getTodayClaimedTiles() {
+        const claimed = {};
+        const todayKey = 'played_' + today();
+        Object.entries(dbData.users || {}).forEach(([key, u]) => {
+            const played = u[todayKey];
+            if (played && played.won && played.tileIdx !== undefined) {
+                claimed[played.tileIdx] = {
+                    username: key,
+                    displayName: u.display || key,
+                    pokemonName: played.pokemonName || ''
+                };
+            }
+        });
+        return claimed;
+    }
+
+    function buildTileGrid(alreadyPlayed) {
+        const grid = document.getElementById('tileGrid');
+        grid.innerHTML = '';
+        const dateStr = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+        document.getElementById('tileDateSub').textContent = dateStr;
+
+        if (!dailyPool.length) {
+            grid.innerHTML = '<div style="color:var(--text-muted);font-size:0.7rem;letter-spacing:2px;grid-column:1/-1;text-align:center;">Loading tiles <span class="loading-dot"></span></div>';
+            return;
+        }
+
+        const claimedTiles = getTodayClaimedTiles();
+
+        if (alreadyPlayed) {
+            const todayKey = 'played_' + today();
+            const userRecord = dbData.users[currentUser.username];
+            const played = userRecord ? userRecord[todayKey] : null;
+
+            dailyPool.forEach((poke, i) => {
+                const wasPicked = played && played.tileIdx === i;
+                const claimInfo = claimedTiles[i];
+                const tile = makeTile(i, poke, true, wasPicked, claimInfo);
+                grid.appendChild(tile);
+            });
+            document.getElementById('tileHint').textContent = "You've already played today. Come back tomorrow!";
+            document.getElementById('tileConfirmBtn').style.display = 'none';
+            startCountdownTimer();
+            return;
+        }
+
+        dailyPool.forEach((poke, i) => {
+            const claimInfo = claimedTiles[i];
+            const isClaimed = !!claimInfo;
+            const tile = makeTile(i, poke, isClaimed, false, claimInfo);
+            grid.appendChild(tile);
+        });
+
+        selectedTileIdx = -1;
+        document.getElementById('tileConfirmBtn').classList.remove('visible');
+        // Update hint to show how many tiles are left
+        const claimedCount = Object.keys(claimedTiles).length;
+        if (claimedCount > 0) {
+            document.getElementById('tileHint').textContent = `${claimedCount} tile${claimedCount > 1 ? 's' : ''} already claimed · ${20 - claimedCount} remaining`;
+        }
+    }
+
+    function makeTile(i, poke, disabled, wasPicked, claimInfo) {
+        const isClaimed = !!claimInfo && !wasPicked;
+        const tile = document.createElement('div');
+        let cls = 'tile';
+        if (wasPicked) cls += ' selected picked';
+        else if (isClaimed) cls += ' claimed';
+        tile.dataset.pattern = i % 10;
+        tile.dataset.idx = i;
+        tile.className = cls;
+
+        const numEl = `<div class="tile-num">${String(i+1).padStart(2,'0')}</div>`;
+
+        if (wasPicked && poke.image) {
+            // your own pick — show silhouette
+            tile.innerHTML = `
+                <img class="tile-silhouette" src="${poke.image}" alt="${poke.name}">
+                ${numEl}
+                <div class="tile-claimer">You · ${poke.name}</div>`;
+        } else if (isClaimed && poke.image) {
+            // someone else claimed it — show silhouette + their name
+            tile.innerHTML = `
+                <img class="tile-silhouette" src="${poke.image}" alt="">
+                ${numEl}
+                <div class="tile-claimer">${claimInfo.displayName}</div>`;
+        } else {
+            tile.innerHTML = `<div class="tile-pokeball">◎</div>${numEl}`;
+        }
+
+        if (!disabled) {
+            tile.addEventListener('click', () => selectTile(i));
+        }
+        return tile;
+    }
+
+    function selectTile(idx) {
+        if (gameOver) return;
+        selectedTileIdx = idx;
+        document.querySelectorAll('.tile').forEach((t, i) => {
+            t.classList.toggle('selected', i === idx);
+            t.classList.remove('keyboard-focus');
+        });
+        document.getElementById('tileConfirmBtn').classList.add('visible');
+        document.getElementById('tileHint').textContent = `Tile ${idx+1} selected — press Enter or click to confirm`;
+        HubAudio.play('cursor');
+    }
+
+    document.getElementById('tileConfirmBtn').addEventListener('click', confirmTile);
+
+    function confirmTile() {
+        if (selectedTileIdx < 0 || !dailyPool.length) return;
+        chosenPokemon = dailyPool[selectedTileIdx];
+        startGame();
+    }
+
+    // Tile keyboard nav
+    let kbTileIdx = -1;
+    document.addEventListener('keydown', e => {
+        if (!document.getElementById('tileScreen').classList.contains('active')) return;
+        const tiles = document.querySelectorAll('.tile');
+        if (!tiles.length) return;
+        const cols = 5;
+
+        if (e.key === 'ArrowRight') { e.preventDefault(); kbTileIdx = Math.min(kbTileIdx + 1, TILE_COUNT - 1); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); kbTileIdx = Math.max(kbTileIdx - 1, 0); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); kbTileIdx = Math.min(kbTileIdx + cols, TILE_COUNT - 1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); kbTileIdx = Math.max(kbTileIdx - cols, 0); }
+        else if (e.key === 'Enter' && kbTileIdx >= 0) { if (selectedTileIdx === kbTileIdx) confirmTile(); else selectTile(kbTileIdx); return; }
+        else return;
+
+        tiles.forEach((t, i) => t.classList.toggle('keyboard-focus', i === kbTileIdx));
+        if (kbTileIdx >= 0) HubAudio.play('cursor');
+    });
+
+    // ════════════════════════════════════════════════════════
+    //  GAME
+    // ════════════════════════════════════════════════════════
+    function startGame() {
+        guesses = [];
+        revealedIdxs = [];
+        currentInput = [];
+        gameOver = false;
+        kbState = {};
+        usedTypeHints = new Set();
+        typeHintState = { correctFound: 0, locked: false };
+        usedGenHint = false;
+        usedAbilityHint = false;
+
+        showScreen('gameScreen');
+        buildTypeIcons();
+        buildGenNumpad();
+        buildKeyboard();
+        renderWordDisplay();
+        renderGuessRows();
+        renderCurrentInput();
+        renderAttemptsBar();
+        loadLeaderboard();
+
+        document.getElementById('pokemonSilhouette').src = chosenPokemon.image || '';
+        document.getElementById('pokemonSilhouette').classList.remove('revealed');
+    }
+
+    // ── WORD DISPLAY ──
+    // Shows blank cells matching the shape of the Pokémon name (no hint reveals here)
+    function renderWordDisplay() {
+        const container = document.getElementById('wordDisplay');
+        container.innerHTML = '';
+        const displayName = chosenPokemon.name;
+        for (let i = 0; i < displayName.length; i++) {
+            const ch = displayName[i];
+            const cell = document.createElement('div');
+            if (ch === '-' || ch === ' ') {
+                cell.className = 'letter-cell sep';
+                cell.textContent = ch;
+            } else {
+                cell.className = 'letter-cell';
+                cell.textContent = '';
+            }
+            container.appendChild(cell);
+        }
+    }
+
+    // ── GUESS ROWS ──
+    function renderGuessRows() {
+        const container = document.getElementById('guessRows');
+        container.innerHTML = '';
+        const solution = normalizeName(chosenPokemon.rawName);
+
+        guesses.forEach(g => {
+            const row = document.createElement('div');
+            row.className = 'guess-row';
+            const displayName = chosenPokemon.name;
+            let gIdx = 0;
+
+            for (let i = 0; i < displayName.length; i++) {
+                const ch = displayName[i];
+                const cell = document.createElement('div');
+
+                if (ch === '-' || ch === ' ') {
+                    cell.className = 'guess-cell sep';
+                    cell.textContent = ch;
+                } else {
+                    const gChar = g[gIdx] || '';
+                    const sChar = solution[gIdx] || '';
+                    cell.textContent = gChar;
+                    if (gChar === sChar) cell.className = 'guess-cell correct';
+                    else if (solution.includes(gChar)) cell.className = 'guess-cell present';
+                    else cell.className = 'guess-cell absent';
+                    gIdx++;
+                }
+                row.appendChild(cell);
+            }
+            container.appendChild(row);
+        });
+    }
+
+    // ── CURRENT INPUT ──
+    function renderCurrentInput() {
+        const container = document.getElementById('currentInputRow');
+        container.innerHTML = '';
+        if (gameOver) return;
+        const displayName = chosenPokemon.name;
+        let iIdx = 0;
+
+        for (let i = 0; i < displayName.length; i++) {
+            const ch = displayName[i];
+            const cell = document.createElement('div');
+
+            if (ch === '-' || ch === ' ') {
+                cell.className = 'current-cell sep';
+                cell.textContent = ch;
+            } else {
+                cell.className = 'current-cell' + (iIdx === currentInput.length ? ' active' : '');
+                cell.textContent = currentInput[iIdx] || '';
+                iIdx++;
+            }
+            container.appendChild(cell);
+        }
+    }
+
+    // ── ATTEMPTS BAR ──
+    function renderAttemptsBar() {
+        const bar = document.getElementById('attemptsBar');
+        bar.innerHTML = '';
+        for (let i = 0; i < MAX_GUESSES; i++) {
+            const pip = document.createElement('div');
+            pip.className = 'attempt-pip';
+            if (i < guesses.length) {
+                const g = guesses[i];
+                const sol = normalizeName(chosenPokemon.rawName);
+                pip.classList.add(g === sol ? 'correct' : 'wrong');
+            }
+            bar.appendChild(pip);
+        }
+    }
+
+    // ── KEYBOARD ──
+    const KB_ROWS = [
+        ['Q','W','E','R','T','Y','U','I','O','P'],
+        ['A','S','D','F','G','H','J','K','L'],
+        ['ENTER','Z','X','C','V','B','N','M','⌫'],
+        ['1','2','3','4','5','6','7','8','9','0','-'],
+    ];
+
+    function buildKeyboard() {
+        const kb = document.getElementById('keyboard');
+        kb.innerHTML = '';
+        KB_ROWS.forEach(row => {
+            const div = document.createElement('div');
+            div.className = 'kb-row';
+            row.forEach(k => {
+                const btn = document.createElement('button');
+                btn.className = 'kb-key' + (k === 'ENTER' || k === '⌫' ? ' wide' : '');
+                btn.textContent = k;
+                btn.dataset.key = k;
+                if (kbState[k]) btn.classList.add(kbState[k]);
+                btn.addEventListener('click', () => handleKey(k));
+                div.appendChild(btn);
+            });
+            kb.appendChild(div);
+        });
+    }
+
+    function updateKeyboard() {
+        document.querySelectorAll('.kb-key').forEach(btn => {
+            const k = btn.dataset.key;
+            btn.className = 'kb-key' + (k === 'ENTER' || k === '⌫' ? ' wide' : '');
+            if (kbState[k]) btn.classList.add(kbState[k]);
+        });
+    }
+    // hint-green/hint-yellow don't override correct/present from guesses
+    const KB_STATE_PRIORITY = { 'correct': 4, 'present': 3, 'absent': 2, 'hint-green': 1, 'hint-yellow': 0 };
+    function setKbState(key, newState) {
+        const cur = kbState[key];
+        if (!cur || (KB_STATE_PRIORITY[newState] || 0) > (KB_STATE_PRIORITY[cur] || 0)) {
+            kbState[key] = newState;
+        }
+    }
+
+    function handleKey(k) {
+        if (gameOver) return;
+        const solution = normalizeName(chosenPokemon.rawName);
+        const maxLen = solution.length;
+
+        if (k === '⌫') {
+            if (currentInput.length > 0) currentInput.pop();
+        } else if (k === 'ENTER') {
+            if (currentInput.length !== maxLen) {
+                // shake
+                document.getElementById('currentInputRow').style.animation = 'shake 0.3s ease';
+                setTimeout(() => document.getElementById('currentInputRow').style.animation = '', 300);
+                return;
+            }
+            submitGuess();
+            return;
+        } else {
+            if (currentInput.length < maxLen) currentInput.push(k);
+        }
+        renderCurrentInput();
+        HubAudio.play('cursor');
+    }
+
+    document.addEventListener('keydown', e => {
+        if (!document.getElementById('gameScreen').classList.contains('active')) return;
+        // don't capture if typing in hint inputs
+        if (['genInput','abilityInput'].includes(document.activeElement?.id)) return;
+        if (e.key === 'Backspace') handleKey('⌫');
+        else if (e.key === 'Enter') handleKey('ENTER');
+        else if (/^[a-zA-Z0-9\-]$/.test(e.key)) handleKey(e.key.toUpperCase());
+    });
+
+    function submitGuess() {
+        const guess = currentInput.join('');
+        const solution = normalizeName(chosenPokemon.rawName);
+        currentInput = [];
+        guesses.push(guess);
+
+        // Update kbState
+        for (let i = 0; i < guess.length; i++) {
+            const ch = guess[i];
+            const cur = kbState[ch];
+            if (solution[i] === ch) kbState[ch] = 'correct';
+            else if (solution.includes(ch) && cur !== 'correct') kbState[ch] = 'present';
+            else if (!cur) kbState[ch] = 'absent';
+        }
+
+        renderGuessRows();
+        renderCurrentInput();
+        renderAttemptsBar();
+        updateKeyboard();
+        HubAudio.play('select');
+
+        if (guess === solution) {
+            endGame(true);
+        } else if (guesses.length >= MAX_GUESSES) {
+            endGame(false);
+        }
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  HINT SYSTEM
+    // ════════════════════════════════════════════════════════
+    // typeHintState: tracks how many correct types found and whether locked
+    let typeHintState = { correctFound: 0, locked: false };
+
+    function buildTypeIcons() {
+        const grid = document.getElementById('typeIconsGrid');
+        grid.innerHTML = '';
+        ALL_TYPES.forEach(type => {
+            const btn = document.createElement('button');
+            btn.className = 'type-icon-btn';
+            btn.innerHTML = `<img src="Types/${type}.png" alt="${type}" onerror="this.style.display='none'"><span>${type}</span>`;
+            btn.dataset.type = type;
+            btn.addEventListener('click', () => guessType(type));
+            grid.appendChild(btn);
+        });
+    }
+
+    function guessType(type) {
+        if (gameOver || typeHintState.locked) return;
+        const btn = document.querySelector(`.type-icon-btn[data-type="${type}"]`);
+        if (!btn || btn.classList.contains('correct') || btn.classList.contains('wrong')) return;
+
+        const correctTypes = chosenPokemon.types.map(t => t.toLowerCase());
+        const isDualType = correctTypes.length >= 2;
+        const isCorrect = correctTypes.includes(type.toLowerCase());
+
+        if (isCorrect) {
+            btn.classList.add('correct');
+            typeHintState.correctFound++;
+            revealLetter('yellow');
+
+            // Check if done: single type = 1 correct locks it, dual type = 2 correct needed
+            const neededCorrect = isDualType ? 2 : 1;
+            if (typeHintState.correctFound >= neededCorrect) {
+                // All correct types found — now check: both correct = green upgrade
+                if (isDualType && typeHintState.correctFound === 2) {
+                    // both types correct: first click gave yellow, second gives green (total: 1 yellow + 1 green)
+                    revealLetter('green');
+                    document.getElementById('typeResult').textContent = '✓ Both types! Yellow + Green revealed.';
+                } else {
+                    document.getElementById('typeResult').textContent = '✓ Correct! Yellow letter revealed.';
+                }
+                document.getElementById('typeResult').className = 'hint-result success';
+                lockAllTypeButtons();
+                typeHintState.locked = true;
+            } else {
+                // dual type, first correct — one more chance
+                document.getElementById('typeResult').textContent = `✓ One type correct! Find the second type.`;
+                document.getElementById('typeResult').className = 'hint-result success';
+            }
+        } else {
+            btn.classList.add('wrong');
+            // Wrong click: if it's a dual type and they've already found one, lock now
+            // If single type or no correct yet: lock entirely (one wrong = game over for this hint)
+            if (isDualType && typeHintState.correctFound === 1) {
+                // They got 1 right, 1 wrong — only yellow, lock
+                document.getElementById('typeResult').textContent = '✗ Wrong second type. Yellow kept.';
+                document.getElementById('typeResult').className = 'hint-result fail';
+            } else {
+                document.getElementById('typeResult').textContent = '✗ Wrong type.';
+                document.getElementById('typeResult').className = 'hint-result fail';
+            }
+            lockAllTypeButtons();
+            typeHintState.locked = true;
+        }
+        HubAudio.play('cursor');
+    }
+
+    function lockAllTypeButtons() {
+        document.querySelectorAll('.type-icon-btn').forEach(btn => {
+            if (!btn.classList.contains('correct')) {
+                btn.classList.add('used');
+            }
+        });
+    }
+
+    function buildGenNumpad() {
+        const pad = document.getElementById('genNumpad');
+        if (!pad) return;
+        pad.innerHTML = '';
+        for (let g = 1; g <= 9; g++) {
+            const btn = document.createElement('button');
+            btn.className = 'gen-key';
+            btn.textContent = g;
+            btn.dataset.gen = g;
+            btn.addEventListener('click', () => guessGen(g));
+            pad.appendChild(btn);
+        }
+    }
+
+    function guessGen(g) {
+        if (gameOver || usedGenHint) return;
+        const correct = genToNumber(chosenPokemon.generation_raw);
+        const btn = document.querySelector(`.gen-key[data-gen="${g}"]`);
+        if (!btn) return;
+
+        if (String(g) === correct) {
+            usedGenHint = true;
+            btn.classList.add('used-correct');
+            const solution = normalizeName(chosenPokemon.rawName);
+            const color = solution.length >= 8 ? 'green' : 'yellow';
+            revealLetter(color);
+            document.getElementById('genResult').textContent = `✓ Gen ${g} correct! ${color === 'green' ? 'Green' : 'Yellow'} letter revealed.`;
+            document.getElementById('genResult').className = 'hint-result success';
+            // lock all other gen buttons
+            document.querySelectorAll('.gen-key').forEach(b => { if (b !== btn) b.classList.add('used-wrong'); });
+        } else {
+            btn.classList.add('used-wrong');
+            document.getElementById('genResult').textContent = `✗ Not Gen ${g}.`;
+            document.getElementById('genResult').className = 'hint-result fail';
+        }
+        HubAudio.play('cursor');
+    }
+
+    document.getElementById('abilityBtn').addEventListener('click', () => {
+        if (gameOver || usedAbilityHint) return;
+        const val = document.getElementById('abilityInput').value.trim().toLowerCase().replace(/\s+/g, '-');
+        if (!val) return;
+        const abilities = chosenPokemon.abilities.map(a => a.toLowerCase());
+        if (abilities.includes(val)) {
+            usedAbilityHint = true;
+            document.getElementById('abilityInput').disabled = true;
+            document.getElementById('abilityBtn').disabled = true;
+            revealLetter('green');
+            document.getElementById('abilityResult').textContent = '✓ Correct! Green letter revealed.';
+            document.getElementById('abilityResult').className = 'hint-result success';
+        } else {
+            document.getElementById('abilityResult').textContent = '✗ Wrong ability.';
+            document.getElementById('abilityResult').className = 'hint-result fail';
+        }
+        document.getElementById('abilityInput').value = '';
+        HubAudio.play('cursor');
+    });
+
+
+    document.getElementById('abilityInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('abilityBtn').click(); });
+
+    // color = 'green' | 'yellow'
+    // Instead of revealing in word display, we color the keyboard key for that letter
+    function revealLetter(color) {
+        const solution = normalizeName(chosenPokemon.rawName);
+
+        // Find letters not yet known (not correct, not already hint-colored)
+        const alreadyColored = new Set(
+            Object.entries(kbState)
+                .filter(([,v]) => v === 'correct' || v === 'hint-green' || v === 'hint-yellow')
+                .map(([k]) => k)
+        );
+
+        // Build list of unique letters in solution that aren't already revealed
+        const candidates = [];
+        const seen = new Set();
+        for (let i = 0; i < solution.length; i++) {
+            const ch = solution[i];
+            if (!seen.has(ch) && !alreadyColored.has(ch) && !/[^A-Z0-9]/.test(ch)) {
+                seen.add(ch);
+                if (color === 'green') {
+                    // green: pick a letter from the middle/end of the name (more useful)
+                    candidates.push({ ch, pos: i });
+                } else {
+                    candidates.push({ ch, pos: i });
+                }
+            }
+        }
+
+        if (!candidates.length) return null;
+
+        let pick;
+        if (color === 'green') {
+            // pick the letter furthest from start that isn't known
+            pick = candidates[Math.floor(candidates.length * 0.6)];
+        } else {
+            pick = candidates[Math.floor(Math.random() * candidates.length)];
+        }
+
+        // Color the keyboard key
+        const kbColor = color === 'green' ? 'hint-green' : 'hint-yellow';
+        // Only upgrade, never downgrade
+        if (kbState[pick.ch] !== 'correct') {
+            kbState[pick.ch] = kbColor;
+        }
+        updateKeyboard();
+        return pick.ch;
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  END GAME
+    // ════════════════════════════════════════════════════════
+    async function endGame(won) {
+        gameOver = true;
+        document.getElementById('pokemonSilhouette').classList.add('revealed');
+
+        // save to db
+        if (currentUser) {
+            const db = await dbRead();
+            const u = db.users[currentUser.username];
+            if (u) {
+                const todayKey = 'played_' + today();
+                const tileIdx = dailyPool.indexOf(chosenPokemon);
+                u[todayKey] = {
+                    won,
+                    tileIdx,
+                    pokemonId: chosenPokemon.id,
+                    pokemonName: chosenPokemon.name
+                };
+                if (won && !u.caught.includes(chosenPokemon.rawName)) {
+                    u.caught.push(chosenPokemon.rawName);
+                }
+                dbData = db;
+                await dbWrite();
+            }
+        }
+
+        // mark hub
+        localStorage.setItem('pokédle_done_' + today(), won ? 'won' : 'lost');
+
+        // show result after short delay
+        setTimeout(() => showResult(won), 800);
+    }
+
+    function showResult(won) {
+        const overlay = document.getElementById('resultOverlay');
+        const box = document.getElementById('resultBox');
+        box.className = 'result-box ' + (won ? 'success' : 'fail');
+        document.getElementById('resultImg').src = chosenPokemon.image || '';
+        document.getElementById('resultTitle').textContent = won ? '✓ Caught!' : '✗ Escaped!';
+        document.getElementById('resultTitle').className = 'result-title ' + (won ? 'success' : 'fail');
+        document.getElementById('resultPokeName').textContent = chosenPokemon.name;
+
+        const typesEl = document.getElementById('resultTypes');
+        typesEl.innerHTML = '';
+        chosenPokemon.types.forEach(type => {
+            const badge = document.createElement('div');
+            badge.className = 'result-type-badge';
+            badge.innerHTML = `<img src="Types/${type}.png" alt="${type}" onerror="this.style.display='none'"><span>${type}</span>`;
+            typesEl.appendChild(badge);
+        });
+
+        overlay.classList.add('visible');
+        startCountdownDisplay();
+        HubAudio.play(won ? 'chord' : 'back');
+    }
+
+    function closeResult() {
+        document.getElementById('resultOverlay').classList.remove('visible');
+        showScreen('pokedexScreen');
+        document.getElementById('pokedexBtn').textContent = '← Back';
+    }
+
+    let countdownInterval;
+    function startCountdownDisplay() {
+        const el = document.getElementById('resultCountdown');
+        const update = () => el.innerHTML = `Next Pokédle in <span>${nextMidnight()}</span>`;
+        update();
+        countdownInterval = setInterval(update, 1000);
+    }
+
+    function startCountdownTimer() {
+        // for already-played state on tile screen
+        const hint = document.getElementById('tileHint');
+        const update = () => hint.textContent = `Come back in ${nextMidnight()} for the next Pokédle!`;
+        update();
+        setInterval(update, 1000);
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  LEADERBOARD
+    // ════════════════════════════════════════════════════════
+    async function loadLeaderboard() {
+        const lbEl = document.getElementById('leaderboardList');
+        const loadingDot = document.getElementById('lbLoading');
+        const db = await dbRead();
+        loadingDot.style.display = 'none';
+
+        const entries = Object.entries(db.users).map(([key, u]) => ({
+            name: u.display || key,
+            count: (u.caught || []).length,
+            isMe: currentUser && key === currentUser.username
+        })).sort((a, b) => b.count - a.count);
+
+        lbEl.innerHTML = '';
+        if (!entries.length) {
+            lbEl.innerHTML = '<div style="padding:16px;font-size:0.58rem;color:var(--text-muted);text-align:center;opacity:0.5;">No players yet</div>';
+            return;
+        }
+
+        entries.forEach((e, i) => {
+            const row = document.createElement('div');
+            row.className = 'lb-row' + (e.isMe ? ' me' : '');
+            const rankCls = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+            row.innerHTML = `
+                <div class="lb-rank ${rankCls}">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i+1}</div>
+                <div class="lb-name">${e.name}</div>
+                <div class="lb-count">${e.count}</div>`;
+            lbEl.appendChild(row);
+        });
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  POKÉDEX SCREEN
+    // ════════════════════════════════════════════════════════
+    function renderPokedex() {
+        if (!currentUser) return;
+        const caught = dbData.users[currentUser.username]?.caught || [];
+        const content = document.getElementById('pokedexContent');
+        document.getElementById('pokedexCount').textContent = `${caught.length} caught`;
+
+        if (!caught.length) {
+            content.innerHTML = '<div class="pokedex-empty"><div class="pokedex-empty-icon">◇</div><div class="pokedex-empty-text">No Pokémon caught yet</div></div>';
+            return;
+        }
+
+        content.innerHTML = '';
+        const grid = document.createElement('div');
+        grid.className = 'pokedex-grid';
+
+        caught.forEach((rawName, idx) => {
+            const card = document.createElement('div');
+            card.className = 'pokedex-card';
+            card.style.animationDelay = `${idx * 0.03}s`;
+            card.innerHTML = `
+<img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${allPokemon.find(p=>p.name===rawName)?.id || 0}.png"
+                     onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${allPokemon.find(p=>p.name===rawName)?.id || 0}.png'"
+                     alt="${rawName}">
+                <div class="pokedex-card-name">${capitalize(rawName)}</div>
+                <div class="pokedex-card-num">#${String(allPokemon.find(p=>p.name===rawName)?.id || '?').padStart(3,'0')}</div>`;
+            card.addEventListener('click', () => openDexModal(rawName));
+            grid.appendChild(card);
+        });
+        content.appendChild(grid);
+    }
+
+    async function openDexModal(rawName) {
+        const backdrop = document.getElementById('dexModalBackdrop');
+        document.getElementById('dexModalName').textContent = '...';
+        document.getElementById('dexModalNum').textContent = '';
+        document.getElementById('dexModalImg').src = '';
+        document.getElementById('dexModalTypes').innerHTML = '';
+        document.getElementById('dexModalStats').innerHTML = '';
+        document.getElementById('dexModalAbilities').innerHTML = '';
+        document.getElementById('dexModalFlavor').textContent = '';
+        backdrop.classList.add('visible');
+
+        try {
+            const p = await fetchPokemonDetail(rawName);
+            document.getElementById('dexModalImg').src = p.image || '';
+            document.getElementById('dexModalNum').textContent = `#${String(p.id).padStart(3,'0')}`;
+            document.getElementById('dexModalName').textContent = p.name;
+
+            const typesEl = document.getElementById('dexModalTypes');
+            p.types.forEach(type => {
+                const badge = document.createElement('div');
+                badge.className = 'dex-type-badge';
+                badge.innerHTML = `<img src="Types/${type}.png" alt="${type}" onerror="this.style.display='none'"><span>${type}</span>`;
+                typesEl.appendChild(badge);
+            });
+
+            document.getElementById('dexModalFlavor').textContent = p.flavor;
+
+            const statsEl = document.getElementById('dexModalStats');
+            const statNames = { 'hp':'HP', 'attack':'ATK', 'defense':'DEF',
+                                'special-attack':'SP.ATK', 'special-defense':'SP.DEF', 'speed':'SPD' };
+            p.stats.forEach(s => {
+                const row = document.createElement('div');
+                row.className = 'dex-stat-row';
+                const pct = Math.min(100, Math.round((s.value / 255) * 100));
+                row.innerHTML = `
+                    <div class="dex-stat-name">${statNames[s.name] || s.name}</div>
+                    <div class="dex-stat-val">${s.value}</div>
+                    <div class="dex-stat-bar"><div class="dex-stat-fill" style="width:${pct}%;background:${pct>66?'#6aaa64':pct>33?'#c9b458':'#ff4444'}"></div></div>`;
+                statsEl.appendChild(row);
+            });
+
+            const abilitiesEl = document.getElementById('dexModalAbilities');
+            p.abilities.forEach(a => {
+                const tag = document.createElement('div');
+                tag.className = 'dex-ability-tag';
+                tag.textContent = a.replace(/-/g, ' ');
+                abilitiesEl.appendChild(tag);
+            });
+        } catch (e) {
+            document.getElementById('dexModalName').textContent = capitalize(rawName);
+        }
+    }
+
+    function closeDexModal() {
+        document.getElementById('dexModalBackdrop').classList.remove('visible');
+    }
+
+    document.getElementById('dexModalBackdrop').addEventListener('click', e => {
+        if (e.target === document.getElementById('dexModalBackdrop')) closeDexModal();
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeDexModal();
+            document.getElementById('resultOverlay').classList.remove('visible');
+        }
+    });
+
+    // ════════════════════════════════════════════════════════
+    //  INIT
+    // ════════════════════════════════════════════════════════
+    async function init() {
+        // Load PokéAPI list + build daily pool in background
+        buildDailyPool().then(() => {
+            // If tile screen is already visible, populate it
+            if (document.getElementById('tileScreen').classList.contains('active') && currentUser) {
+                const todayKey = 'played_' + today();
+                const alreadyPlayed = !!(dbData.users[currentUser.username]?.[todayKey]);
+                buildTileGrid(alreadyPlayed);
+            }
+        });
+
+        const resumed = await checkSession();
+        if (!resumed) {
+            showScreen('authScreen');
+        }
+    }
+
+    init();
+    </script>
+</body>
+</html>
