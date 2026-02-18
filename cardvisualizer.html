@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Card Visualizer</title>
+    <link rel="stylesheet" href="hub.css">
+    <script src="hub-audio.js"></script>
+    <script src="card-store.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes blink { 0%,100%{opacity:1}50%{opacity:0} }
+
+        /* ── NAV ── */
+        .cv-nav {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            height: 52px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-darker);
+            position: relative;
+            z-index: 50;
+        }
+
+        .cv-nav::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+            opacity: 0.4;
+        }
+
+        .nav-brand {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: color 0.2s ease;
+        }
+
+        .nav-brand:hover { color: var(--accent-cyan); }
+
+        .nav-brand-diamond {
+            width: 8px; height: 8px;
+            background: var(--accent-cyan);
+            transform: rotate(45deg);
+            box-shadow: 0 0 8px var(--accent-cyan);
+        }
+
+        .nav-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .nav-btn {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.55rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 6px 14px;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(0,255,255,0.04); }
+        .nav-btn.danger:hover { border-color: #ff4444; color: #ff4444; background: rgba(255,68,68,0.06); }
+        .nav-btn.primary { border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(0,255,255,0.06); }
+
+        /* ── MAIN AREA ── */
+        .cv-body {
+            flex: 1;
+            display: flex;
+            min-height: 0;
+            position: relative;
+        }
+
+        /* ── STAGE (3D viewer) ── */
+        .stage {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            perspective: 1200px;
+            cursor: grab;
+            background: radial-gradient(ellipse at center, rgba(0,255,255,0.03) 0%, transparent 70%);
+        }
+
+        .stage:active { cursor: none; }
+
+        .stage.empty {
+            cursor: default;
+        }
+
+        .card-3d {
+            width: 320px;
+            height: 448px;
+            border-radius: 16px;
+            overflow: hidden;
+            transform-style: preserve-3d;
+            transition: box-shadow 0.3s ease;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .card-3d img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            pointer-events: none;
+            border-radius: 16px;
+        }
+
+        .stage-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            opacity: 0.3;
+        }
+
+        .stage-empty-icon {
+            font-size: 3rem;
+            color: var(--accent-cyan);
+        }
+
+        .stage-empty-text {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--text-muted);
+        }
+
+        .stage-empty-hint {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+        }
+
+        /* nav arrows on stage */
+        .stage-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 60px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s ease, color 0.2s ease;
+            z-index: 10;
+        }
+
+        .stage:hover .stage-nav { opacity: 1; }
+        .stage-nav:hover { color: var(--accent-cyan); }
+        .stage-nav.left { left: 16px; }
+        .stage-nav.right { right: 16px; }
+
+        /* card info overlay */
+        .card-info {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .card-info-name {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--text-light);
+            text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+        }
+
+        .card-info-index {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            margin-top: 4px;
+        }
+
+        /* rotation hint */
+        .rotate-hint {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            opacity: 0.5;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        /* ── TRAY (right sidebar) ── */
+        .tray {
+            width: 200px;
+            flex-shrink: 0;
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-darker);
+            overflow: hidden;
+        }
+
+        .tray-header {
+            flex-shrink: 0;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .tray-title {
+            font-size: 0.55rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+            color: var(--text-muted);
+        }
+
+        .tray-count {
+            font-size: 0.52rem;
+            color: var(--accent-cyan);
+            letter-spacing: 1px;
+        }
+
+        .tray-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+
+        .tray-list::-webkit-scrollbar { width: 3px; }
+        .tray-list::-webkit-scrollbar-thumb { background: var(--border); }
+
+        .tray-item {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+            aspect-ratio: 5/7;
+        }
+
+        .tray-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            background: var(--surface);
+        }
+
+        .tray-item:hover { border-color: var(--accent-cyan); transform: translateX(-2px); }
+        .tray-item.active { border-color: var(--accent-cyan); box-shadow: 0 0 12px rgba(0,255,255,0.2); }
+
+        .tray-item-remove {
+            position: absolute;
+            top: 4px; right: 4px;
+            width: 18px; height: 18px;
+            background: rgba(255,68,68,0.85);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 0.55rem;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
+        .tray-item:hover .tray-item-remove { display: flex; }
+
+        .tray-item-name {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            padding: 4px 6px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.85));
+            font-size: 0.48rem;
+            color: white;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ── TRAY EMPTY ── */
+        .tray-empty {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            opacity: 0.3;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .tray-empty-icon { font-size: 1.5rem; color: var(--accent-cyan); }
+        .tray-empty-text { font-size: 0.58rem; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; }
+
+        /* ── IMPORT (hidden input) ── */
+        #fileInput { display: none; }
+
+        /* ── RESET HINT ── */
+        .controls-hint {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.52rem;
+            color: var(--text-muted);
+            letter-spacing: 1.5px;
+            opacity: 0.4;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+    <input type="file" id="fileInput" accept="image/*" multiple>
+
+    <nav class="cv-nav">
+        <a class="nav-brand" href="index.html">
+            <span class="nav-brand-diamond"></span>
+            MegaHub
+        </a>
+        <div class="nav-title">▶ 3D Card Visualizer</div>
+        <div class="nav-actions">
+            <button class="nav-btn" id="importBtn">+ Import Images</button>
+            <button class="nav-btn danger" id="clearBtn">Clear All</button>
+        </div>
+    </nav>
+
+    <div class="cv-body">
+        <div class="stage" id="stage">
+            <div class="stage-empty-state" id="emptyState">
+                <div class="stage-empty-icon">◇</div>
+                <div class="stage-empty-text">No cards loaded</div>
+                <div class="stage-empty-hint">Import images to get started</div>
+            </div>
+
+            <div class="card-3d" id="card3d" style="display:none;">
+                <img id="cardImg" src="" alt="Card">
+            </div>
+
+            <div class="stage-nav left" id="navLeft">‹</div>
+            <div class="stage-nav right" id="navRight">›</div>
+
+            <div class="card-info" id="cardInfo" style="display:none;">
+                <div class="card-info-name" id="cardName"></div>
+                <div class="card-info-index" id="cardIndex"></div>
+            </div>
+
+            <div class="rotate-hint" id="rotateHint" style="display:none;">
+                Drag to rotate · Scroll to zoom · Middle-click to reset
+            </div>
+        </div>
+
+        <div class="tray">
+            <div class="tray-header">
+                <span class="tray-title">Cards</span>
+                <span class="tray-count" id="trayCount">0</span>
+            </div>
+            <div class="tray-list" id="trayList">
+                <div class="tray-empty">
+                    <div class="tray-empty-icon">◇</div>
+                    <div class="tray-empty-text">Empty</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cards = [];
+        let currentIdx = -1;
+
+        // 3D state
+        let isDragging = false;
+        let startX, startY;
+        let rotX = 0, rotY = 0, zoom = 1;
+
+        const stage    = document.getElementById('stage');
+        const card3d   = document.getElementById('card3d');
+        const cardImg  = document.getElementById('cardImg');
+        const cardName = document.getElementById('cardName');
+        const cardIdx  = document.getElementById('cardIndex');
+        const cardInfo = document.getElementById('cardInfo');
+        const emptyState = document.getElementById('emptyState');
+        const rotateHint = document.getElementById('rotateHint');
+        const trayList = document.getElementById('trayList');
+        const trayCount= document.getElementById('trayCount');
+        const fileInput= document.getElementById('fileInput');
+
+        // ── LOAD FROM STORE ──
+        function loadFromStore() {
+            cards = CardStore.getAll();
+            renderTray();
+            if (cards.length > 0 && currentIdx < 0) showCard(0);
+            else if (cards.length === 0) showEmpty();
+            else showCard(Math.min(currentIdx, cards.length - 1));
+        }
+
+        // ── IMPORT ──
+        document.getElementById('importBtn').addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', async () => {
+            if (!fileInput.files.length) return;
+            cards = await CardStore.addFiles(Array.from(fileInput.files));
+            fileInput.value = '';
+            renderTray();
+            if (currentIdx < 0 && cards.length > 0) showCard(0);
+            HubAudio.play('chord');
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            cards = CardStore.clear();
+            currentIdx = -1;
+            renderTray();
+            showEmpty();
+            HubAudio.play('back');
+        });
+
+        // ── SHOW CARD ──
+        function showCard(idx) {
+            if (!cards.length) { showEmpty(); return; }
+            idx = Math.max(0, Math.min(idx, cards.length - 1));
+            currentIdx = idx;
+            const card = cards[idx];
+            cardImg.src = card.base64;
+            cardName.textContent = card.name;
+            cardIdx.textContent = `${idx + 1} / ${cards.length}`;
+            card3d.style.display = 'block';
+            cardInfo.style.display = 'block';
+            rotateHint.style.display = 'block';
+            emptyState.style.display = 'none';
+            resetTransform();
+            highlightTray(idx);
+        }
+
+        function showEmpty() {
+            card3d.style.display = 'none';
+            cardInfo.style.display = 'none';
+            rotateHint.style.display = 'none';
+            emptyState.style.display = 'flex';
+            currentIdx = -1;
+        }
+
+        function resetTransform() {
+            rotX = 0; rotY = 0; zoom = 1;
+            applyTransform();
+        }
+
+        function applyTransform() {
+            card3d.style.transform = `perspective(1200px) rotateX(${rotX}deg) rotateY(${rotY}deg) scale(${zoom})`;
+        }
+
+        // ── DRAG ROTATION ──
+        stage.addEventListener('mousedown', e => {
+            if (e.button !== 0 || !cards.length) return;
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            stage.style.cursor = 'grabbing';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            rotY += dx * 0.4;
+            rotX -= dy * 0.4;
+            rotX = Math.max(-45, Math.min(45, rotX));
+            rotY = Math.max(-45, Math.min(45, rotY));
+            applyTransform();
+            startX = e.clientX;
+            startY = e.clientY;
+        });
+
+        document.addEventListener('mouseup', e => {
+            if (e.button === 0) { isDragging = false; stage.style.cursor = 'grab'; }
+        });
+
+        // Middle click reset
+        stage.addEventListener('mousedown', e => {
+            if (e.button === 1) { e.preventDefault(); resetTransform(); }
+        });
+
+        // Scroll zoom
+        stage.addEventListener('wheel', e => {
+            if (!cards.length) return;
+            e.preventDefault();
+            zoom = e.deltaY < 0 ? Math.min(zoom + 0.08, 2.5) : Math.max(zoom - 0.08, 0.4);
+            applyTransform();
+        }, { passive: false });
+
+        // ── NAV ──
+        document.getElementById('navLeft').addEventListener('click', () => {
+            if (currentIdx > 0) { HubAudio.play('cursor'); showCard(currentIdx - 1); }
+        });
+
+        document.getElementById('navRight').addEventListener('click', () => {
+            if (currentIdx < cards.length - 1) { HubAudio.play('cursor'); showCard(currentIdx + 1); }
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'ArrowLeft' && currentIdx > 0) { HubAudio.play('cursor'); showCard(currentIdx - 1); }
+            if (e.key === 'ArrowRight' && currentIdx < cards.length - 1) { HubAudio.play('cursor'); showCard(currentIdx + 1); }
+        });
+
+        // ── TRAY ──
+        function renderTray() {
+            trayCount.textContent = cards.length;
+            if (!cards.length) {
+                trayList.innerHTML = `<div class="tray-empty"><div class="tray-empty-icon">◇</div><div class="tray-empty-text">Empty</div></div>`;
+                return;
+            }
+            trayList.innerHTML = '';
+            cards.forEach((card, i) => {
+                const item = document.createElement('div');
+                item.className = 'tray-item' + (i === currentIdx ? ' active' : '');
+                item.innerHTML = `
+                    <img src="${card.base64}" alt="${card.name}">
+                    <button class="tray-item-remove" data-id="${card.id}">✕</button>
+                    <div class="tray-item-name">${card.name}</div>`;
+                item.addEventListener('click', e => {
+                    if (e.target.classList.contains('tray-item-remove')) return;
+                    HubAudio.play('cursor');
+                    showCard(i);
+                });
+                item.querySelector('.tray-item-remove').addEventListener('click', e => {
+                    e.stopPropagation();
+                    cards = CardStore.remove(card.id);
+                    if (currentIdx >= cards.length) currentIdx = cards.length - 1;
+                    renderTray();
+                    if (cards.length === 0) showEmpty();
+                    else showCard(currentIdx);
+                    HubAudio.play('back');
+                });
+                trayList.appendChild(item);
+            });
+        }
+
+        function highlightTray(idx) {
+            trayList.querySelectorAll('.tray-item').forEach((el, i) => {
+                el.classList.toggle('active', i === idx);
+            });
+        }
+
+        // ── INIT ──
+        loadFromStore();
+    </script>
+</body>
+</html>

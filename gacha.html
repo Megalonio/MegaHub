@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card Gacha</title>
+    <link rel="stylesheet" href="hub.css">
+    <script src="hub-audio.js"></script>
+    <script src="card-store.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes blink { 0%,100%{opacity:1}50%{opacity:0} }
+
+        /* ── NAV ── */
+        .cv-nav {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            height: 52px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-darker);
+            position: relative;
+            z-index: 50;
+        }
+
+        .cv-nav::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+            opacity: 0.4;
+        }
+
+        .nav-brand {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: color 0.2s ease;
+        }
+
+        .nav-brand:hover { color: var(--accent-cyan); }
+
+        .nav-brand-diamond {
+            width: 8px; height: 8px;
+            background: var(--accent-cyan);
+            transform: rotate(45deg);
+            box-shadow: 0 0 8px var(--accent-cyan);
+        }
+
+        .nav-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .nav-btn {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.55rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 6px 14px;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(0,255,255,0.04); }
+        .nav-btn.danger:hover { border-color: #ff4444; color: #ff4444; background: rgba(255,68,68,0.06); }
+
+        #fileInput { display: none; }
+
+        /* ── MAIN ── */
+        .gacha-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ── BOOSTER SCREEN ── */
+        .booster-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 32px;
+            animation: fadeInUp 0.4s ease-out both;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .booster-label {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            color: var(--text-muted);
+            opacity: 0.6;
+        }
+
+        .booster-pack {
+            width: 220px;
+            height: 308px;
+            background: linear-gradient(135deg, var(--surface) 0%, var(--bg-darker) 100%);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+
+        .booster-pack::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg,
+                rgba(0,255,255,0.05) 0%,
+                transparent 50%,
+                rgba(255,0,255,0.05) 100%);
+            border-radius: 18px;
+        }
+
+        .booster-pack::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: conic-gradient(
+                from 0deg,
+                transparent 0deg,
+                rgba(0,255,255,0.05) 60deg,
+                transparent 120deg,
+                rgba(255,0,255,0.05) 180deg,
+                transparent 240deg,
+                rgba(0,255,255,0.03) 300deg,
+                transparent 360deg
+            );
+            animation: rotateShine 6s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes rotateShine {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+
+        .booster-pack:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 30px rgba(0,255,255,0.1);
+        }
+
+        .booster-pack.opening {
+            animation: packOpen 0.6s ease-in forwards;
+        }
+
+        @keyframes packOpen {
+            0%   { transform: scale(1) rotate(0deg); opacity: 1; }
+            30%  { transform: scale(1.15) rotate(-3deg); }
+            60%  { transform: scale(1.1) rotate(5deg); }
+            100% { transform: scale(0) rotate(15deg); opacity: 0; }
+        }
+
+        .booster-icon {
+            font-size: 3rem;
+            filter: drop-shadow(0 0 12px rgba(0,255,255,0.4));
+        }
+
+        .booster-pack-label {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: var(--text-light);
+            text-shadow: 0 0 20px rgba(0,255,255,0.3);
+            z-index: 1;
+        }
+
+        .booster-pack-sub {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            letter-spacing: 3px;
+            z-index: 1;
+        }
+
+        .booster-hint {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            opacity: 0.5;
+            text-transform: uppercase;
+        }
+
+        .booster-pool-info {
+            font-size: 0.58rem;
+            color: var(--accent-cyan);
+            letter-spacing: 2px;
+            opacity: 0.7;
+        }
+
+        /* ── NO CARDS STATE ── */
+        .no-cards-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            opacity: 0.35;
+        }
+
+        .no-cards-icon { font-size: 2.5rem; color: var(--accent-cyan); }
+        .no-cards-text { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; color: var(--text-muted); }
+        .no-cards-hint { font-size: 0.6rem; color: var(--text-muted); letter-spacing: 2px; }
+
+        /* ── REVEAL SCREEN ── */
+        .reveal-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+            width: 100%;
+            height: 100%;
+            justify-content: center;
+            position: absolute;
+            inset: 0;
+        }
+
+        .reveal-screen.visible { display: flex; }
+
+        /* card stage */
+        .reveal-stage {
+            perspective: 1200px;
+            position: relative;
+        }
+
+        .reveal-card {
+            width: 260px;
+            height: 364px;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            position: relative;
+            transform-style: preserve-3d;
+            animation: cardReveal 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+        }
+
+        @keyframes cardReveal {
+            from { transform: rotateY(-90deg) scale(0.8); opacity: 0; }
+            to   { transform: rotateY(0deg)   scale(1);   opacity: 1; }
+        }
+
+        .reveal-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* rarity glow based on weight */
+        .reveal-card.rarity-high {
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 40px rgba(255,215,0,0.3);
+        }
+
+        .reveal-card.rarity-mid {
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(255,0,255,0.25);
+        }
+
+        /* card name + rarity */
+        .reveal-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .reveal-name {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: var(--text-light);
+        }
+
+        .reveal-rarity {
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .reveal-rarity.high { color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.5); }
+        .reveal-rarity.mid  { color: var(--accent-pink); }
+        .reveal-rarity.low  { color: var(--accent-cyan); }
+
+        /* progress + nav */
+        .reveal-controls {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .reveal-nav-btn {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 10px 24px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .reveal-nav-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+        .reveal-nav-btn.primary {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+            background: rgba(0,255,255,0.06);
+        }
+
+        .reveal-nav-btn:disabled { opacity: 0.2; cursor: default; pointer-events: none; }
+
+        .reveal-progress {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        /* progress dots */
+        .progress-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .progress-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--border);
+            transition: all 0.2s ease;
+        }
+
+        .progress-dot.revealed { background: var(--accent-cyan); box-shadow: 0 0 6px var(--accent-cyan); }
+        .progress-dot.current  { background: var(--accent-pink); box-shadow: 0 0 8px var(--accent-pink); transform: scale(1.4); }
+
+        /* open another pack btn */
+        .open-again-btn {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 10px 28px;
+            border-radius: 6px;
+            border: 1px solid var(--accent-pink);
+            background: rgba(255,0,255,0.06);
+            color: var(--accent-pink);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: none;
+        }
+
+        .open-again-btn.visible { display: block; }
+        .open-again-btn:hover { background: rgba(255,0,255,0.12); }
+    </style>
+</head>
+<body>
+
+    <input type="file" id="fileInput" accept="image/*" multiple>
+
+    <nav class="cv-nav">
+        <a class="nav-brand" href="index.html">
+            <span class="nav-brand-diamond"></span>
+            MegaHub
+        </a>
+        <div class="nav-title">✦ Card Gacha</div>
+        <div class="nav-actions">
+            <button class="nav-btn" id="importBtn">+ Import Images</button>
+            <button class="nav-btn danger" id="clearBtn">Clear Pool</button>
+        </div>
+    </nav>
+
+    <div class="gacha-body" id="gachaBody">
+
+        <!-- BOOSTER / NO CARDS -->
+        <div id="boosterScreen" class="booster-screen">
+            <!-- shown when no cards -->
+            <div class="no-cards-state" id="noCardsState">
+                <div class="no-cards-icon">◇</div>
+                <div class="no-cards-text">Pool is empty</div>
+                <div class="no-cards-hint">Import images to fill the pool</div>
+            </div>
+            <!-- shown when cards available -->
+            <div id="packArea" style="display:none; flex-direction:column; align-items:center; gap:32px;">
+                <div class="booster-pool-info" id="poolInfo"></div>
+                <div class="booster-pack" id="boosterPack">
+                    <div class="booster-icon">✦</div>
+                    <div class="booster-pack-label">Booster Pack</div>
+                    <div class="booster-pack-sub">10 cards</div>
+                </div>
+                <div class="booster-hint">Click to open</div>
+            </div>
+        </div>
+
+        <!-- REVEAL SCREEN -->
+        <div class="reveal-screen" id="revealScreen">
+            <div class="reveal-stage">
+                <div class="reveal-card" id="revealCard">
+                    <img id="revealImg" src="" alt="">
+                </div>
+            </div>
+            <div class="reveal-meta">
+                <div class="reveal-name" id="revealName"></div>
+                <div class="reveal-rarity" id="revealRarity"></div>
+            </div>
+            <div class="progress-dots" id="progressDots"></div>
+            <div class="reveal-controls">
+                <button class="reveal-nav-btn" id="prevBtn" disabled>← Prev</button>
+                <span class="reveal-progress" id="revealProgress"></span>
+                <button class="reveal-nav-btn primary" id="nextBtn">Next →</button>
+            </div>
+            <button class="open-again-btn" id="openAgainBtn">✦ Open Another Pack</button>
+        </div>
+
+    </div>
+
+    <script>
+        let pool = [];
+        let pullResults = [];
+        let currentRevealIdx = 0;
+
+        const boosterScreen  = document.getElementById('boosterScreen');
+        const noCardsState   = document.getElementById('noCardsState');
+        const packArea       = document.getElementById('packArea');
+        const boosterPack    = document.getElementById('boosterPack');
+        const poolInfo       = document.getElementById('poolInfo');
+        const revealScreen   = document.getElementById('revealScreen');
+        const revealCard     = document.getElementById('revealCard');
+        const revealImg      = document.getElementById('revealImg');
+        const revealName     = document.getElementById('revealName');
+        const revealRarity   = document.getElementById('revealRarity');
+        const progressDots   = document.getElementById('progressDots');
+        const revealProgress = document.getElementById('revealProgress');
+        const prevBtn        = document.getElementById('prevBtn');
+        const nextBtn        = document.getElementById('nextBtn');
+        const openAgainBtn   = document.getElementById('openAgainBtn');
+        const fileInput      = document.getElementById('fileInput');
+
+        function loadPool() {
+            pool = CardStore.getAll();
+            updateBoosterScreen();
+        }
+
+        function updateBoosterScreen() {
+            if (!pool.length) {
+                noCardsState.style.display = 'flex';
+                packArea.style.display = 'none';
+            } else {
+                noCardsState.style.display = 'none';
+                packArea.style.display = 'flex';
+                const weighted = pool.filter(c => c.weight !== null).length;
+                poolInfo.textContent = weighted
+                    ? `${pool.length} cards · ${weighted} weighted`
+                    : `${pool.length} cards · equal odds`;
+            }
+        }
+
+        // ── IMPORT ──
+        document.getElementById('importBtn').addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', async () => {
+            if (!fileInput.files.length) return;
+            pool = await CardStore.addFiles(Array.from(fileInput.files));
+            fileInput.value = '';
+            updateBoosterScreen();
+            HubAudio.play('chord');
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            pool = CardStore.clear();
+            showBoosterScreen();
+            updateBoosterScreen();
+            HubAudio.play('back');
+        });
+
+        // ── WEIGHTED DRAW ──
+        function drawCards(count) {
+            if (!pool.length) return [];
+            const hasWeights = pool.some(c => c.weight !== null);
+
+            if (!hasWeights) {
+                // Equal odds — shuffle and pick
+                const shuffled = [...pool].sort(() => Math.random() - 0.5);
+                const results = [];
+                for (let i = 0; i < count; i++) results.push(shuffled[i % shuffled.length]);
+                return results;
+            }
+
+            // Weighted pool
+            const weightedPool = [];
+            pool.forEach(card => {
+                const w = card.weight !== null ? Math.max(1, Math.round(card.weight * 10)) : 50;
+                for (let i = 0; i < w; i++) weightedPool.push(card);
+            });
+
+            const results = [];
+            for (let i = 0; i < count; i++) {
+                results.push(weightedPool[Math.floor(Math.random() * weightedPool.length)]);
+            }
+            return results;
+        }
+
+        function getRarity(card) {
+            if (card.weight === null) return { label: 'Standard', cls: 'low' };
+            if (card.weight <= 5)    return { label: '★ Ultra Rare', cls: 'high' };
+            if (card.weight <= 15)   return { label: '◆ Rare', cls: 'mid' };
+            return { label: '· Common', cls: 'low' };
+        }
+
+        // ── OPEN PACK ──
+        boosterPack.addEventListener('click', () => {
+            if (!pool.length) return;
+            boosterPack.classList.add('opening');
+            HubAudio.play('chord');
+            setTimeout(() => {
+                pullResults = drawCards(10);
+                currentRevealIdx = 0;
+                showRevealScreen();
+            }, 600);
+        });
+
+        function showRevealScreen() {
+            boosterScreen.style.display = 'none';
+            revealScreen.classList.add('visible');
+            openAgainBtn.classList.remove('visible');
+            buildDots();
+            showRevealCard(0);
+        }
+
+        function showBoosterScreen() {
+            revealScreen.classList.remove('visible');
+            boosterScreen.style.display = 'flex';
+            boosterPack.classList.remove('opening');
+        }
+
+        function buildDots() {
+            progressDots.innerHTML = '';
+            for (let i = 0; i < pullResults.length; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'progress-dot';
+                progressDots.appendChild(dot);
+            }
+        }
+
+        function updateDots(idx) {
+            progressDots.querySelectorAll('.progress-dot').forEach((dot, i) => {
+                dot.className = 'progress-dot';
+                if (i < idx) dot.classList.add('revealed');
+                else if (i === idx) dot.classList.add('current');
+            });
+        }
+
+        function showRevealCard(idx) {
+            currentRevealIdx = idx;
+            const card = pullResults[idx];
+            const rarity = getRarity(card);
+
+            // Re-trigger animation
+            revealCard.style.animation = 'none';
+            revealCard.offsetHeight; // reflow
+            revealCard.style.animation = 'cardReveal 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both';
+
+            revealCard.className = 'reveal-card';
+            if (rarity.cls === 'high') revealCard.classList.add('rarity-high');
+            if (rarity.cls === 'mid')  revealCard.classList.add('rarity-mid');
+
+            revealImg.src = card.base64;
+            revealName.textContent = card.name;
+            revealRarity.textContent = rarity.label;
+            revealRarity.className = `reveal-rarity ${rarity.cls}`;
+            revealProgress.textContent = `${idx + 1} / ${pullResults.length}`;
+
+            updateDots(idx);
+
+            prevBtn.disabled = idx === 0;
+
+            const isLast = idx === pullResults.length - 1;
+            nextBtn.textContent = isLast ? 'Done ✓' : 'Next →';
+            nextBtn.disabled = false;
+
+            if (isLast) openAgainBtn.classList.add('visible');
+            else openAgainBtn.classList.remove('visible');
+
+            HubAudio.play('cursor');
+        }
+
+        prevBtn.addEventListener('click', () => {
+            if (currentRevealIdx > 0) showRevealCard(currentRevealIdx - 1);
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentRevealIdx < pullResults.length - 1) {
+                showRevealCard(currentRevealIdx + 1);
+            } else {
+                showBoosterScreen();
+                updateBoosterScreen();
+            }
+        });
+
+        openAgainBtn.addEventListener('click', () => {
+            pullResults = drawCards(10);
+            currentRevealIdx = 0;
+            openAgainBtn.classList.remove('visible');
+            buildDots();
+            showRevealCard(0);
+            HubAudio.play('chord');
+        });
+
+        document.addEventListener('keydown', e => {
+            if (!revealScreen.classList.contains('visible')) return;
+            if (e.key === 'ArrowLeft' && currentRevealIdx > 0) showRevealCard(currentRevealIdx - 1);
+            if (e.key === 'ArrowRight') nextBtn.click();
+        });
+
+        loadPool();
+    </script>
+</body>
+</html>
