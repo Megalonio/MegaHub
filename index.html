@@ -524,6 +524,11 @@
         sortNameBtn.addEventListener('click', () => sortRows('name'));
         sortCatBtn.addEventListener('click',  () => sortRows('category'));
 
+        window.addEventListener('pageshow', () => {
+            overlay.classList.remove('visible');
+            navigating = false;
+        });
+
         function getLiveRows() {
             return Array.from(toolList.querySelectorAll('.tool-row'));
         }
