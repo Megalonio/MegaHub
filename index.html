@@ -276,6 +276,7 @@
         .row-tag[data-cat="Audio"]         { color: #00e87a; border-color: rgba(0,232,122,0.25); background: rgba(0,232,122,0.04); }
         .row-tag[data-cat="Cards"]         { color: #ffd080; border-color: rgba(255,208,128,0.25); background: rgba(255,208,128,0.04); }
         .row-tag[data-cat="Daily"]         { color: #ff5f5f; border-color: rgba(255,95,95,0.25); background: rgba(255,95,95,0.04); }
+        .row-tag[data-cat="Game"]          { color: #a78bfa; border-color: rgba(167,139,250,0.25); background: rgba(167,139,250,0.04); }
 
         .daily-dot {
             width: 7px; height: 7px;
@@ -290,6 +291,21 @@
             0%,100% { box-shadow: 0 0 4px #ff4444; }
             50%      { box-shadow: 0 0 14px #ff4444; }
         }
+
+        /* Pokédle not-yet-played alert */
+        .item-row.daily-alert {
+            background: rgba(255,68,68,0.04);
+        }
+        .item-row.daily-alert::before {
+            opacity: 1 !important;
+            background: #ff4444 !important;
+            animation: dailyPulse 1.5s ease-in-out infinite;
+        }
+        .item-row.daily-alert .row-icon {
+            border-color: rgba(255,68,68,0.4);
+            box-shadow: 0 0 14px rgba(255,68,68,0.2);
+        }
+        .item-row.daily-alert .row-icon svg { color: #ff4444; }
         /* Links tags */
         .row-tag[data-cat="Social"]        { color: #00cfff; border-color: rgba(0,207,255,0.25); background: rgba(0,207,255,0.04); }
         .row-tag[data-cat="Entertainment"] { color: #ff5fd7; border-color: rgba(255,95,215,0.25); background: rgba(255,95,215,0.04); }
@@ -710,13 +726,13 @@
               icon: `<svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="2.5"/><path d="M20 17L32 24L20 31V17Z" fill="currentColor"/><path d="M8 38h32" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.4"/><path d="M14 43h20" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.25"/></svg>` },
             { name: 'Sheet Slicer', desc: 'Import a sprite sheet, define frame size, export individual PNGs as ZIP.', href: 'sheetslicer.html', cat: 'Image',
               icon: `<svg viewBox="0 0 48 48" fill="none"><rect x="4" y="4" width="40" height="40" rx="3" stroke="currentColor" stroke-width="2.5"/><line x1="4" y1="18" x2="44" y2="18" stroke="currentColor" stroke-width="2" opacity="0.6"/><line x1="4" y1="32" x2="44" y2="32" stroke="currentColor" stroke-width="2" opacity="0.6"/><line x1="18" y1="4" x2="18" y2="44" stroke="currentColor" stroke-width="2" opacity="0.6"/><line x1="32" y1="4" x2="32" y2="44" stroke="currentColor" stroke-width="2" opacity="0.6"/><circle cx="18" cy="18" r="3" fill="currentColor"/><circle cx="32" cy="18" r="3" fill="currentColor"/><circle cx="18" cy="32" r="3" fill="currentColor"/></svg>` },
-            { name: '3D Card Visualizer', desc: 'View any card image in an interactive 3D viewer with mouse-controlled rotation.', href: 'cardvisualizer.html', cat: 'Cards',
+            { name: '3D Card Visualizer', desc: 'View any card image in an interactive 3D viewer with mouse-controlled rotation.', href: 'cardvisualizer.html', cat: 'Image',
               icon: `<svg viewBox="0 0 48 48" fill="none"><rect x="10" y="6" width="28" height="38" rx="4" stroke="currentColor" stroke-width="2.5"/><path d="M10 16h28" stroke="currentColor" stroke-width="1.5" opacity="0.4"/><path d="M10 32h28" stroke="currentColor" stroke-width="1.5" opacity="0.4"/><path d="M24 6v36" stroke="currentColor" stroke-width="1" opacity="0.2"/><circle cx="24" cy="24" r="5" stroke="currentColor" stroke-width="2"/><path d="M24 19v10M19 24h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/></svg>` },
-            { name: 'Card Gallery', desc: 'Browse all imported cards in a zoomable grid layout.', href: 'gallery.html', cat: 'Cards',
+            { name: 'Card Gallery', desc: 'Browse all imported cards in a zoomable grid layout.', href: 'gallery.html', cat: 'Image',
               icon: `<svg viewBox="0 0 48 48" fill="none"><rect x="4" y="4" width="18" height="20" rx="3" stroke="currentColor" stroke-width="2.5"/><rect x="26" y="4" width="18" height="20" rx="3" stroke="currentColor" stroke-width="2.5"/><rect x="4" y="28" width="18" height="16" rx="3" stroke="currentColor" stroke-width="2.5"/><rect x="26" y="28" width="18" height="16" rx="3" stroke="currentColor" stroke-width="2.5"/></svg>` },
-            { name: 'Card Gacha', desc: 'Open booster packs and reveal 10 random cards with weighted odds.', href: 'gacha.html', cat: 'Cards',
+            { name: 'Card Gacha', desc: 'Open booster packs and reveal 10 random cards with weighted odds.', href: 'gacha.html', cat: 'Game',
               icon: `<svg viewBox="0 0 48 48" fill="none"><path d="M24 6l4 12h12l-10 7 4 12-10-7-10 7 4-12L8 18h12z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/></svg>` },
-            { name: 'Pokédle', desc: 'Guess today\'s Pokémon from 20 mystery tiles. Daily challenge, shared leaderboard.', href: 'pokédle.html', cat: 'Daily', daily: true,
+            { name: 'Pokédle', desc: 'Guess today\'s Pokémon from 20 mystery tiles. Daily challenge, shared leaderboard.', href: 'pokédle.html', cat: 'Game', daily: true,
               icon: `<svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="2.5"/><line x1="6" y1="24" x2="42" y2="24" stroke="currentColor" stroke-width="2.5"/><circle cx="24" cy="24" r="5" fill="currentColor"/><circle cx="24" cy="24" r="5" stroke="currentColor" stroke-width="2.5"/></svg>` },
         ];
 
@@ -735,13 +751,74 @@
         const addModal       = document.getElementById('addModal');
         const confirmBackdrop= document.getElementById('confirmBackdrop');
 
+        // ── POKÉDLE DB CONFIG (mirrors pokédle.html) ──
+        const JSONBIN_KEY = '$2a$10$4zgXclml/nzvi4C7EUPZQuXr/fHK13krwhiZSXcgon5zatSt8YXT.';
+        const JSONBIN_BIN = '69961e73ae596e708f354016';
+        const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN}`;
+
+        // Get logged-in Pokédle username from session
+        function getPokédleUser() {
+            try {
+                const sess = JSON.parse(localStorage.getItem('pokédle_session'));
+                const today = new Date().toISOString().slice(0, 10);
+                if (sess && sess.day === today) return sess.username;
+            } catch {}
+            return null;
+        }
+
         // ── LINKS STORAGE ──
+        // If user has a Pokédle account, links live in JSONBin under users[username].links
+        // Otherwise falls back to localStorage
+        async function fetchPokédleDB() {
+            try {
+                const r = await fetch(JSONBIN_URL + '/latest', { headers: { 'X-Master-Key': JSONBIN_KEY } });
+                const j = await r.json();
+                return j.record || { users: {} };
+            } catch { return null; }
+        }
+
+        async function writePokédleDB(db) {
+            try {
+                await fetch(JSONBIN_URL, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+                    body: JSON.stringify(db)
+                });
+            } catch {}
+        }
+
         function loadLinks() {
+            // Sync read from localStorage (JSONBin links are loaded async via syncLinksFromDB)
             try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
             catch { return []; }
         }
 
-        function saveLinks(links) { localStorage.setItem(STORAGE_KEY, JSON.stringify(links)); }
+        function saveLinks(links) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(links));
+            // If logged into Pokédle, also persist to JSONBin
+            const user = getPokédleUser();
+            if (user) {
+                fetchPokédleDB().then(db => {
+                    if (!db) return;
+                    if (!db.users[user]) db.users[user] = { caught: [] };
+                    db.users[user].links = links;
+                    writePokédleDB(db);
+                });
+            }
+        }
+
+        // On load, pull links from JSONBin if logged in (may be fresher than localStorage)
+        async function syncLinksFromDB() {
+            const user = getPokédleUser();
+            if (!user) return;
+            const db = await fetchPokédleDB();
+            if (!db) return;
+            const cloudLinks = db.users[user]?.links;
+            if (cloudLinks && Array.isArray(cloudLinks)) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudLinks));
+                render(); // re-render with cloud links
+            }
+        }
 
         // ── SORT ──
         function applySort(items) {
@@ -801,11 +878,13 @@
                 row.href = tool.href;
                 row.dataset.idx = i;
                 row.style.animationDelay = `${i * 0.04}s`;
+                const dailyAlert = tool.daily && isDailyAvailable();
+                if (dailyAlert) row.classList.add('daily-alert');
                 row.innerHTML = `
                     <span class="row-index">${String(i+1).padStart(2,'0')}</span>
                     <div class="row-icon">${tool.icon}</div>
                     <div class="row-main">
-                        <div class="row-name">${tool.name}${tool.daily && isDailyAvailable() ? ' <span class="daily-dot" title="Daily available!"></span>' : ''}</div>
+                        <div class="row-name">${tool.name}${dailyAlert ? ' <span class="daily-dot" title="Daily available!"></span>' : ''}</div>
                         <div class="row-desc">${tool.desc}</div>
                     </div>
                     <span class="row-tag" data-cat="${tool.cat}">${tool.cat}</span>
@@ -903,7 +982,8 @@
                 footerRight.textContent = '';
             } else {
                 footerHints.innerHTML = `<span class="fkey">↑</span><span class="fkey">↓</span> Navigate &nbsp;<span class="fkey">←</span> Tools &nbsp;<span class="fkey">Shift</span> Delete mode`;
-                footerRight.textContent = 'Local storage';
+                const user = getPokédleUser();
+                footerRight.textContent = user ? `☁ synced · ${user}` : 'Local storage';
             }
         }
 
@@ -1091,6 +1171,19 @@
 
         // ── INIT ──
         render();
+
+        // Sync links from Pokédle DB if user is logged in
+        syncLinksFromDB();
+
+        // Fix back-button frozen state: browser may restore page with navigating=true
+        // and overlays still visible from a previous navigation
+        window.addEventListener('pageshow', () => {
+            navigating = false;
+            typeoutOverlay.classList.remove('visible');
+            slideOverlay.style.transition = 'none';
+            slideOverlay.style.opacity = '0';
+            slideOverlay.style.transform = 'translateX(0)';
+        });
     </script>
 </body>
 </html>
